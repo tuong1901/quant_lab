@@ -1,0 +1,94 @@
+{
+  "verdict": "FAIL",
+  "verdict_reasons": [
+    "OOS Sharpe Ratio (-4.12) below minimum threshold 0.80."
+  ],
+  "summary_metrics": {
+    "total_oos_trades": 201,
+    "win_rate": 0.30845771144278605,
+    "expectancy_per_trade": -27.233723684754878,
+    "avg_r_multiple": -0.3100764037661928,
+    "total_net_pnl": -5473.978460635731,
+    "total_gross_pnl": -3566.7280689229196,
+    "total_commission_paid": 1632.9027443169548,
+    "total_funding_paid": 274.3476473958564,
+    "fee_drag_ratio": 1.0,
+    "oos_sharpe": -4.12283368847745,
+    "fill_survival_ratio": 0.0
+  },
+  "param_stability_log": [
+    {
+      "window": 0,
+      "preset": "tier1_plus_extension",
+      "buffer_k": 0.55,
+      "lookback": 45,
+      "extension_ratio": 0.8,
+      "timeout": 12,
+      "trigger_type": "engulfing",
+      "ratchet_trigger": "at_2R"
+    },
+    {
+      "window": 1,
+      "preset": "tier1_plus_extension",
+      "buffer_k": 0.5,
+      "lookback": 85,
+      "extension_ratio": 0.5,
+      "timeout": 44,
+      "trigger_type": "engulfing",
+      "ratchet_trigger": "at_2R"
+    }
+  ],
+  "alpha_decay_summary": {
+    "time_horizons": {
+      "3M": {
+        "trades": 99,
+        "expectancy": 15.659345602604992,
+        "avg_r": 0.1585668939848325,
+        "sharpe": 1.944642243704422,
+        "win_rate": 0.43434343434343436
+      },
+      "6M": {
+        "trades": 189,
+        "expectancy": 11.31570038694175,
+        "avg_r": 0.11542785437373632,
+        "sharpe": 1.3893411242477218,
+        "win_rate": 0.41798941798941797
+      },
+      "1Y": {
+        "trades": 386,
+        "expectancy": -9.267347894473783,
+        "avg_r": -0.10304485552147763,
+        "sharpe": -1.319075395603828,
+        "win_rate": 0.35233160621761656
+      }
+    },
+    "trade_count_horizons": {
+      "50_trades": {
+        "trades": 50,
+        "expectancy": -48.832606590516185,
+        "avg_r": -0.5512463605748027,
+        "win_rate": 0.22
+      },
+      "100_trades": {
+        "trades": 100,
+        "expectancy": -25.35307318588715,
+        "avg_r": -0.2820973927989008,
+        "win_rate": 0.31
+      },
+      "250_trades": {
+        "trades": 201,
+        "expectancy": -27.233723684754885,
+        "avg_r": -0.3100764037661928,
+        "win_rate": 0.30845771144278605
+      }
+    },
+    "alpha_decay_ratio": -0.6783126304461389,
+    "decay_verdict": "SEVERE_DECAY"
+  },
+  "fill_comparison": {
+    "wick_touch_trades": 386,
+    "wick_touch_pnl": -3577.196287266879,
+    "bar_close_trades": 386,
+    "bar_close_pnl": -3577.196287266879
+  }
+}

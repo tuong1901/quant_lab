@@ -1,0 +1,59 @@
+# Zone Registry Configuration
+# Dynamic Fibo & Structural Zones with Tiering and Role Assignment
+
+zones:
+  - id: "eq_0500"
+    name: "Equilibrium 0.500"
+    lower: 0.500
+    upper: 0.500
+    tier: 1
+    role: "bias_filter"
+    active: true
+
+  - id: "fib_0618"
+    name: "Golden Ratio 0.618"
+    lower: 0.618
+    upper: 0.618
+    tier: 1
+    role: "entry"
+    active: true
+
+  - id: "fib_0786"
+    name: "Deep Retracement 0.786"
+    lower: 0.786
+    upper: 0.786
+    tier: 1
+    role: "entry"
+    active: true
+
+  - id: "ext_1272"
+    name: "Extension Target 1.272"
+    lower: 1.272
+    upper: 1.272
+    tier: 2
+    role: "target"
+    active: true
+
+  - id: "ext_1618"
+    name: "Golden Extension 1.618"
+    lower: 1.618
+    upper: 1.618
+    tier: 2
+    role: "target"
+    active: true
+
+  - id: "harm_0886"
+    name: "Bat Harmonic 0.886"
+    lower: 0.886
+    upper: 0.886
+    tier: 3
+    role: "entry"
+    active: true
+
+  - id: "harm_1130"
+    name: "Shark Harmonic 1.130"
+    lower: 1.130
+    upper: 1.130
+    tier: 3
+    role: "target"
+    active: true

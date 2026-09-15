@@ -1,0 +1,3 @@
+window,preset,buffer_k,lookback,extension_ratio,timeout,trigger_type,ratchet_trigger
+0,tier1_plus_extension,0.55,45,0.8,12,engulfing,at_2R
+1,tier1_plus_extension,0.5,85,0.5,44,engulfing,at_2R

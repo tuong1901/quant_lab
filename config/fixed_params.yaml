@@ -1,0 +1,16 @@
+# Fixed System & Capital Management Parameters
+# Locked parameters NOT subject to Optuna tuning
+
+atr_ratchet:
+  period: 14               # Wilder RMA ATR period (Locked, matched with Pine Script)
+  multiplier: 3.0          # Trailing Ratchet Multiplier (Locked, matched with Pine Script)
+
+capital_management:
+  initial_capital: 10000.0 # Starting portfolio capital in USD
+  risk_per_trade_pct: 0.01 # 1.0% risk per trade (Lot size = Risk Amount / Entry-Stop Distance)
+
+friction:
+  commission_bps: 4.0      # 4 bps (0.04%) per trade turn
+  slippage_atr_factor: 0.05 # ATR-scaled slippage
+  enable_funding_rate: true
+  funding_rate_8h: 0.0001  # 0.01% per 8-hour funding cycle for BTCUSDT Perp Futures
