@@ -1,1 +1,1 @@
-# Paper trading module
+# paper package

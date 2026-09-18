@@ -1,1 +1,1 @@
-# Environment initialization
+# environment package

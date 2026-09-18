@@ -1,1 +1,1 @@
-# Features module
+# features package

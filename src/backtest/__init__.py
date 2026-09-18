@@ -1,1 +1,1 @@
-# Backtest engine module
+# backtest package

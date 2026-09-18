@@ -1,0 +1,15 @@
+time:
+  mode: rolling
+  anchor: now
+  range:
+    start: 2024-01-01
+    end: now
+  window:
+    duration: 1y
+  step:
+    duration: 1mo
+  warmup:
+    duration: 200bars
+  timezone: UTC
+  reproducibility:
+    freeze_anchor: true

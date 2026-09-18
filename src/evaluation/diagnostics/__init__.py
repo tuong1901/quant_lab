@@ -1,3 +1,1 @@
-"""
-[PURPOSE]: Diagnostic tools & tear sheet visualizers.
-"""
+# diagnostics package

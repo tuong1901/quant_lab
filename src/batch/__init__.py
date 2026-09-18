@@ -1,1 +1,1 @@
-# Batch runner module
+# batch package

@@ -1,5 +1,34 @@
-/.agents
-/venv
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
 
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS System Files
+.DS_Store
+Thumbs.db
+
+# Agent & Debug Tools
+/.agents
 repair_chat_history.bat
 repair_chat_history.py
+
+# System Logs
+logs/*.log
+logs/**/*
+!logs/.gitkeep

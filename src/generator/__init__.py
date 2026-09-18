@@ -1,1 +1,1 @@
-# Strategy generator module
+# generator package
