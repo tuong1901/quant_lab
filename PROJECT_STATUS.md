@@ -46,14 +46,23 @@
   * [src/portfolio/portfolio_state.py](file:///d:/reverse_indi/src/portfolio/portfolio_state.py): Snapshot bất biến `PortfolioState`.
   * [src/portfolio/portfolio.py](file:///d:/reverse_indi/src/portfolio/portfolio.py): Class orchestrator `Portfolio` (`apply_fill` xử lý 5 vòng đời vị thế: Open, Increase weighted avg, Reduce, Close, và Reversal 2-step; `mark_to_market`, chống duplicate fill).
   * Unit test suite `tests/portfolio/`: 14/14 Unit tests **PASS 100%** (`test_account_pnl.py`, `test_position_lifecycle.py`, `test_margin_risk.py`, `test_portfolio_integration.py`).
+- Xây dựng hoàn chỉnh **Market & Dataset Subsystem (`src/market_data/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/market_data/exceptions.py](file:///d:/reverse_indi/src/market_data/exceptions.py): `MarketDataException`, `InvalidMarketError`, `InvalidDatasetError`, `CatalogError`, `DatasetNotFoundError`, `DuplicateDatasetError`, `DataValidationError`, `IncompatibleDatasetError`.
+  * [src/market_data/market.py](file:///d:/reverse_indi/src/market_data/market.py): Dataclass bất biến `Market` (`venue`, `symbol`, `market_type`, `quote_currency`, property `identity`).
+  * [src/market_data/timeframe.py](file:///d:/reverse_indi/src/market_data/timeframe.py): Enum `Timeframe` (`M1`, `M5`, `M15`, `M30`, `H1`, `H4`, `D1`) hỗ trợ serialization chuẩn dạng chuỗi (`"15m"`) và quy đổi phút/giây.
+  * [src/market_data/dataset.py](file:///d:/reverse_indi/src/market_data/dataset.py): Dataclasses bất biến `DataRange`, `StorageReference`, `Dataset` (`identity -> dataset_id:v3`).
+  * [src/market_data/versioning.py](file:///d:/reverse_indi/src/market_data/versioning.py): Engine tính toán SHA-256 content hash deterministic (`calculate_content_hash`, `verify_dataset_hash`).
+  * [src/market_data/catalog.py](file:///d:/reverse_indi/src/market_data/catalog.py): Registry `DatasetCatalog` (`register`, `get`, `exists`, `list`, `list_versions`).
+  * [src/market_data/loader.py](file:///d:/reverse_indi/src/market_data/loader.py): `DatasetLoader` và container `MarketData` (đọc Parquet/CSV, validate UTC timestamp, OHLC bounds, content hash, detect missing candles).
+  * [src/market_data/compatibility.py](file:///d:/reverse_indi/src/market_data/compatibility.py): Hàm `validate_compatible_datasets(strategy_ds, execution_ds)`.
+  * Unit test suite `tests/market_data/`: 29/29 Unit tests **PASS 100%** (`test_market.py`, `test_dataset.py`, `test_versioning_hash.py`, `test_catalog.py`, `test_loader_validation.py`, `test_compatibility.py`, `test_integration.py`).
 
 ## What's next
 - Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
   1. `core/`: Primitive types, clock, events, base exception classes.
-  2. `market_data/`: `DataLoader`, `Cleaner`, `Dataset`, `Catalog`, `Versioning`.
-  3. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
-  4. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
-  5. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
+  2. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
+  3. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
+  4. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
 
 
 
