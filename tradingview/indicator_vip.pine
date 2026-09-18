@@ -1,20 +1,20 @@
 //@version=5
-indicator("VIP Multi-Trend Indicator (Exact Reconstructed)", overlay=true)
+indicator("3-Line Stepped Trend Ribbon (SuperTrend ATR Ratchet)", overlay=true)
 
 // ==========================================
-// 1. INPUT PARAMETERS (EXACT REVERSED VALUES)
+// 1. THAM SỐ ĐẦU VÀO (INPUT PARAMETERS)
 // ==========================================
-grp_main  = "Trend Chính (Primary Channel)"
-tc_period = input.int(14, "ATR Period Chính", minval=1, group=grp_main)
-tc_mult   = input.float(3.0, "Multiplier Chính (Exact: 3.0)", minval=0.1, step=0.1, group=grp_main)
-tc_dev    = input.float(0.5, "Band Deviation Factor (Exact: 0.5)", minval=0.1, step=0.1, group=grp_main)
+grp_main  = "Cấu hình 3 Đường Trend Ở Giữa"
+tc_period = input.int(14, "Chu kỳ ATR (ATR Period)", minval=1, group=grp_main)
+tc_mult   = input.float(3.0, "Hệ số nhân (Multiplier)", minval=0.1, step=0.1, group=grp_main)
+tc_dev    = input.float(0.5, "Độ rộng 3 đường (Band Offset)", minval=0.1, step=0.1, group=grp_main)
 
-grp_sub   = "Trend Phụ (Secondary Ribbon)"
+grp_sub   = "Đường Phụ Bậc Thang (Secondary Ribbon)"
 tp_period = input.int(14, "ATR Period Phụ", minval=1, group=grp_sub)
-tp_mult   = input.float(1.0, "Multiplier Phụ (Exact: 1.0)", minval=0.1, step=0.1, group=grp_sub)
+tp_mult   = input.float(1.0, "Multiplier Phụ", minval=0.1, step=0.1, group=grp_sub)
 
 // ==========================================
-// 2. TREND CHÍNH ENGINE (ATR RATCHET TRAILING STOP)
+// 2. THUẬT TOÁN 3 ĐƯỜNG BẬC THANG (ATR RATCHET ENGINE)
 // ==========================================
 atr_tc = ta.atr(tc_period)
 dev_tc = tc_dev * atr_tc
@@ -40,14 +40,14 @@ else
             is_uptrend := true
             tc1 := up_bound_tc
 
-tc2 = tc1 + dev_tc
-tc3 = tc1 - dev_tc
+// 3 Đường ở giữa (Upper, Center, Lower)
+tc2 = tc1 + dev_tc  // Đường trên
+tc3 = tc1 - dev_tc  // Đường dưới
 
 // ==========================================
-// 3. TREND PHỤ ENGINE (FAST STRUCTURE RIBBON)
+// 3. THUẬT TOÁN ĐƯỜNG PHỤ BẬC THANG
 // ==========================================
 atr_tp = ta.atr(tp_period)
-
 var float tp1 = na
 
 up_bound_tp = low - tp_mult * atr_tp
@@ -61,52 +61,60 @@ else
     else
         tp1 := math.min(tp1, dn_bound_tp)
 
-// Exact verified: Trend Phụ 2 is Trend Phụ 1 lagged by 2 bars
 tp2 = tp1[2]
 
 // ==========================================
-// 4. SIGNAL GENERATION LOGIC
+// 4. MÀU SẮC XANH / ĐỎ KHI ĐỔI TREND
+// ==========================================
+// Màu Xanh khi Tăng (Uptrend), Màu Đỏ khi Giảm (Downtrend)
+color_trend = is_uptrend ? color.green : color.red
+color_fill  = is_uptrend ? color.new(color.green, 70) : color.new(color.red, 70)
+
+// ==========================================
+// 5. VẼ 3 ĐƯỜNG NẤC THANG Ở GIỮA & FILL DẢI MÀU
+// ==========================================
+// Đường 1: Đường Trên (Upper Band)
+p_tc2 = plot(tc2, "Đường Trên (Upper Line)", color=color_trend, linewidth=2)
+
+// Đường 2: Đường Giữa (Center Line)
+p_tc1 = plot(tc1, "Đường Giữa (Center Line)", color=color_trend, linewidth=3)
+
+// Đường 3: Đường Dưới (Lower Band)
+p_tc3 = plot(tc3, "Đường Dưới (Lower Line)", color=color_trend, linewidth=2)
+
+// Tô dải màu Xanh / Đỏ nấc thang giữa Đường Trên và Đường Dưới
+fill(p_tc2, p_tc3, color=color_fill, title="Dải Bậc Thang Xanh / Đỏ")
+
+// Đường Phụ nấc thang phụ trợ
+color_tp = tp1 >= tp2 ? color.lime : color.maroon
+plot(tp1, "Đường Phụ 1", color=color_tp, linewidth=2)
+plot(tp2, "Đường Phụ 2", color=color.new(color.white, 40), linewidth=1, style=plot.style_circles)
+
+// ==========================================
+// 6. TÍN HIỆU GIAO DỊCH BUY / SELL / WARNING
 // ==========================================
 bull_regime = close > tc1
 bear_regime = close < tc1
 
-// Cross & Expansion conditions
 tp_cross_up       = ta.crossover(tp1, tp2)
 tp_cross_dn       = ta.crossunder(tp1, tp2)
 tp_bull_expansion = (tp1 > tp1[1]) and (tp1[1] == tp2[1])
 tp_bear_expansion = (tp1 < tp1[1]) and (tp1[1] == tp2[1])
 
-// Signal 2 = Strong BUY (Bullish Regime + TP1 >= TP2 + TP1 > TC1)
 sig_buy  = bull_regime and tp1 >= tp2 and tp1 > tc1 and (tp_cross_up or tp_bull_expansion or ta.crossover(close, tc1))
-
-// Signal 1 = Strong SELL (Bearish Regime + TP1 <= TP2 + TP1 < TC1)
 sig_sell = bear_regime and tp1 <= tp2 and tp1 < tc1 and (tp_cross_dn or tp_bear_expansion or ta.crossunder(close, tc1))
-
-// Signal 4 = Warning / Pullback / Take Profit
 sig_warn = (bull_regime and (tp_cross_dn or (close >= tc2 and close < close[1]))) or 
            (bear_regime and (tp_cross_up or (close <= tc3 and close > close[1])))
 
-// ==========================================
-// 5. PLOTTING & VISUAL STYLING
-// ==========================================
-tc_color = is_uptrend ? color.green : color.red
-
-p_tc1 = plot(tc1, "Trend Chính 1 (Center)", color=tc_color, linewidth=2)
-p_tc2 = plot(tc2, "Trend Chính 2 (Upper)", color=color.new(tc_color, 40), linewidth=1)
-p_tc3 = plot(tc3, "Trend Chính 3 (Lower)", color=color.new(tc_color, 40), linewidth=1)
-fill(p_tc2, p_tc3, color=color.new(tc_color, 88), title="Trend Chính Channel")
-
-plot(tp1, "Trend Phụ 1", color=color.yellow, linewidth=2)
-plot(tp2, "Trend Phụ 2", color=color.new(color.white, 50), linewidth=1, style=plot.style_circles)
-
-plotshape(sig_buy, title="Signal BUY (2)", style=shape.labelup, location=location.belowbar, 
+plotshape(sig_buy, title="Signal BUY", style=shape.labelup, location=location.belowbar, 
           color=color.green, textcolor=color.white, text="BUY", size=size.small)
 
-plotshape(sig_sell, title="Signal SELL (1)", style=shape.labeldown, location=location.abovebar, 
+plotshape(sig_sell, title="Signal SELL", style=shape.labeldown, location=location.abovebar, 
           color=color.red, textcolor=color.white, text="SELL", size=size.small)
 
-plotshape(sig_warn, title="Warning / Pullback (4)", style=shape.xcross, location=location.abovebar, 
+plotshape(sig_warn, title="Warning", style=shape.xcross, location=location.abovebar, 
           color=color.orange, size=size.tiny)
 
-alertcondition(sig_buy, title="Alert BUY Signal", message="VIP Indicator: BUY Signal on {{ticker}} at {{close}}")
-alertcondition(sig_sell, title="Alert SELL Signal", message="VIP Indicator: SELL Signal on {{ticker}} at {{close}}")
+alertcondition(sig_buy, title="Alert BUY", message="BUY Signal at {{close}}")
+alertcondition(sig_sell, title="Alert SELL", message="SELL Signal at {{close}}")
+

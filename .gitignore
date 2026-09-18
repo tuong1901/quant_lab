@@ -1,2 +1,5 @@
 /.agents
 /venv
+
+repair_chat_history.bat
+repair_chat_history.py
