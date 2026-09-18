@@ -36,9 +36,24 @@
   * [src/execution/broker.py](file:///d:/reverse_indi/src/execution/broker.py): `Broker` gateway interface & `HistoricalBroker`.
   * [src/execution/execution_engine.py](file:///d:/reverse_indi/src/execution/execution_engine.py): Orchestrator quản lý lifecycle của Order và bắn `ExecutionEvent` audit log.
   * Unit test suite `tests/execution/`: 12/12 Unit tests **PASS 100%** (`test_order_fill.py`, `test_fill_model.py`, `test_slippage_fee.py`, `test_execution_engine.py`).
+- Xây dựng hoàn chỉnh **Portfolio & Accounting Subsystem (`src/portfolio/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/portfolio/exceptions.py](file:///d:/reverse_indi/src/portfolio/exceptions.py): `PortfolioException`, `InsufficientMarginError`, `InvalidPositionError`, `RiskRejectError`.
+  * [src/portfolio/account.py](file:///d:/reverse_indi/src/portfolio/account.py): Dataclass bất biến `Account` (`initial_capital`, `balance`, `realized_pnl`, `fees_paid`, `funding_paid`, `equity`).
+  * [src/portfolio/position.py](file:///d:/reverse_indi/src/portfolio/position.py): Enum `PositionSide` (`LONG`, `SHORT`) và Dataclass bất biến `Position` (enforces `quantity > 0` tuyệt đối, không bao giờ dùng `quantity = -1`).
+  * [src/portfolio/pnl.py](file:///d:/reverse_indi/src/portfolio/pnl.py): Pure PnL formulas (`calculate_unrealized_pnl`, `calculate_realized_pnl`).
+  * [src/portfolio/margin.py](file:///d:/reverse_indi/src/portfolio/margin.py): `MarginModel`, `SimpleMarginModel` (`position_notional`, `initial_margin`, `used_margin`, `available_margin`).
+  * [src/portfolio/risk_manager.py](file:///d:/reverse_indi/src/portfolio/risk_manager.py): `RiskManager` pre-execution guardrail validator (`allow_short`, `max_position_size`, `max_notional`, `max_leverage`).
+  * [src/portfolio/portfolio_state.py](file:///d:/reverse_indi/src/portfolio/portfolio_state.py): Snapshot bất biến `PortfolioState`.
+  * [src/portfolio/portfolio.py](file:///d:/reverse_indi/src/portfolio/portfolio.py): Class orchestrator `Portfolio` (`apply_fill` xử lý 5 vòng đời vị thế: Open, Increase weighted avg, Reduce, Close, và Reversal 2-step; `mark_to_market`, chống duplicate fill).
+  * Unit test suite `tests/portfolio/`: 14/14 Unit tests **PASS 100%** (`test_account_pnl.py`, `test_position_lifecycle.py`, `test_margin_risk.py`, `test_portfolio_integration.py`).
 
 ## What's next
-- Tiếp tục xây dựng module tiếp theo của **Dimension 1 (Correctness)**: `core/`, `environment/`, `market_data/`, `portfolio/`, `backtest/`.
+- Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
+  1. `core/`: Primitive types, clock, events, base exception classes.
+  2. `market_data/`: `DataLoader`, `Cleaner`, `Dataset`, `Catalog`, `Versioning`.
+  3. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
+  4. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
+  5. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
 
 
 
