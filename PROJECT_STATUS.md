@@ -24,10 +24,22 @@
   * [src/experiments/window.py](file:///d:/reverse_indi/src/experiments/window.py): Immutable Dataclass `TimeWindow` (`frozen=True`) đảm bảo bất đẳng thức `warmup_start <= execution_start < execution_end` & UTC timezone.
   * [src/experiments/run.py](file:///d:/reverse_indi/src/experiments/run.py): Immutable Dataclass `ExperimentRun` (`frozen=True`) với ID, seed, window.
   * [src/experiments/planner.py](file:///d:/reverse_indi/src/experiments/planner.py): `DatasetRange` (Interface trừu tượng không đọc trực tiếp file storage) & `TimePlanner` (giải quyết `now`, tính window, warmup, kiểm tra biên `PlanningError`, sinh `ExperimentRun[]`).
-- Tinh chỉnh trọn vẹn [.gitignore](file:///d:/reverse_indi/.gitignore) chuẩn Python Quant Engine (bảo vệ cache, venv, loggers, dataset thô/đã xử lý, parquet, database files).
+- Tinh chỉnh trọn vẹn [.gitignore](file:///d:/reverse_indi/.gitignore) chuẩn Python Quant Engine (cho phép push dữ liệu `data/` lên Git theo yêu cầu của user, chỉ ignore `venv`, `__pycache__`, IDE config và system logs).
+- Xây dựng hoàn chỉnh **Execution Subsystem (`src/execution/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/execution/order.py](file:///d:/reverse_indi/src/execution/order.py): Enums `OrderSide`, `OrderType`, `OrderStatus` và Dataclass bất biến `Order` (`frozen=True`).
+  * [src/execution/fill.py](file:///d:/reverse_indi/src/execution/fill.py): Dataclass bất biến `Fill` (`frozen=True`).
+  * [src/execution/result.py](file:///d:/reverse_indi/src/execution/result.py): Container `ExecutionResult` tổng hợp audit trail (fills, avg price, fees, slippage).
+  * [src/execution/fill_model.py](file:///d:/reverse_indi/src/execution/fill_model.py): Abstract `FillModel`, `OHLCFillModel` & `LowerTimeframeReplayFillModel` (duyệt nến M1 intrabar xác định chính xác thứ tự SL/TP mà không bị lookahead).
+  * [src/execution/slippage.py](file:///d:/reverse_indi/src/execution/slippage.py): `FixedSlippageModel` (bps / ticks) & `VolatilitySlippageModel` (ATR).
+  * [src/execution/fee.py](file:///d:/reverse_indi/src/execution/fee.py): `PercentageFeeModel` (Maker/Taker bps).
+  * [src/execution/funding.py](file:///d:/reverse_indi/src/execution/funding.py): `PerpetualFundingModel` (phí 8h perp).
+  * [src/execution/broker.py](file:///d:/reverse_indi/src/execution/broker.py): `Broker` gateway interface & `HistoricalBroker`.
+  * [src/execution/execution_engine.py](file:///d:/reverse_indi/src/execution/execution_engine.py): Orchestrator quản lý lifecycle của Order và bắn `ExecutionEvent` audit log.
+  * Unit test suite `tests/execution/`: 12/12 Unit tests **PASS 100%** (`test_order_fill.py`, `test_fill_model.py`, `test_slippage_fee.py`, `test_execution_engine.py`).
 
 ## What's next
-- Tiếp tục xây dựng module tiếp theo của **Dimension 1 (Correctness)**: `core/`, `environment/`, `market_data/`, `backtest/`.
+- Tiếp tục xây dựng module tiếp theo của **Dimension 1 (Correctness)**: `core/`, `environment/`, `market_data/`, `portfolio/`, `backtest/`.
+
 
 
 
