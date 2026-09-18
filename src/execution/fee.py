@@ -37,11 +37,11 @@ class PercentageFeeModel(FeeModel):
     [PURPOSE]: Basis points percentage fee model (differentiating Maker vs Taker fees).
     [DEPENDENCIES]: FeeModel, Order, OrderType.
     """
-    def __init__(self, maker_bps: float = 2.0, taker_bps: float = 4.0):
+    def __init__(self, maker_bps: float = 1.0, taker_bps: float = 2.0):
         """
         [ARGS]:
-            maker_bps — Maker fee in basis points (default 2 bps = 0.02%).
-            taker_bps — Taker fee in basis points (default 4 bps = 0.04%).
+            maker_bps — Maker fee in basis points (default 1 bps = 0.01%).
+            taker_bps — Taker fee in basis points (default 2 bps = 0.02%).
         """
         self.maker_bps = maker_bps
         self.taker_bps = taker_bps
