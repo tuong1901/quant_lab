@@ -4,6 +4,7 @@ Dataset Domain Model (`src/market_data/dataset.py`).
 Represents an immutable historical market dataset snapshot.
 """
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Union
@@ -265,3 +266,43 @@ class Dataset:
             storage_reference=storage_ref,
             metadata=dict(data.get("metadata", {})),
         )
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str) -> "Dataset":
+        """
+        [PURPOSE]: Load and parse a Dataset object directly from a YAML configuration file.
+        [DEPENDENCIES]: Uses PyYAML and Dataset.from_dict.
+        [ARGS]: yaml_path — Path to the .yaml or .yml configuration file.
+        [RETURNS]: Dataset object.
+        [SIDE EFFECTS]: Reads file from disk.
+        """
+        import yaml
+
+        if not os.path.exists(yaml_path):
+            raise InvalidDatasetError(f"Dataset YAML configuration file not found: '{yaml_path}'")
+
+        try:
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except Exception as e:
+            raise InvalidDatasetError(f"Failed to parse YAML file '{yaml_path}': {str(e)}")
+
+        return cls.from_dict(data)
+
+    def to_yaml(self, yaml_path: str) -> None:
+        """
+        [PURPOSE]: Save Dataset configuration object into a clean YAML configuration file.
+        [DEPENDENCIES]: Uses PyYAML and Dataset.to_dict.
+        [ARGS]: yaml_path — Destination path for .yaml file.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Writes file to disk.
+        """
+        import yaml
+
+        parent_dir = os.path.dirname(yaml_path)
+        if parent_dir and not os.path.exists(parent_dir):
+            os.makedirs(parent_dir, exist_ok=True)
+
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(self.to_dict(), f, sort_keys=False, allow_unicode=True)
+

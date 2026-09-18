@@ -1,0 +1,29 @@
+# Dataset Configuration: BTCUSDT Binance Perpetual 15m
+dataset_id: btcusdt_binance_perp_15m
+version: 1
+
+market:
+  venue: binance
+  symbol: BTCUSDT
+  market_type: perpetual
+  quote_currency: USDT
+
+timeframe: 15m
+
+data_range:
+  start: "2023-01-01T00:00:00Z"
+  end: "2026-01-01T00:00:00Z"
+
+source:
+  provider: binance
+
+content_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+
+schema_version: 1
+
+storage_reference:
+  type: local
+  path: data/raw/binance/BTCUSDT/15m/v1.parquet
+
+metadata:
+  description: "Primary 15-minute Strategy Dataset for BTCUSDT Perpetual Futures"

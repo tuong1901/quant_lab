@@ -112,3 +112,46 @@ class DatasetCatalog:
                 versions.append(ds.version)
 
         return sorted(versions)
+
+    def load_from_file(self, file_path: str) -> Dataset:
+        """
+        [PURPOSE]: Load a single Dataset configuration from a YAML file and register it in the catalog.
+        [DEPENDENCIES]: Calls Dataset.from_yaml and self.register.
+        [ARGS]: file_path — Path to dataset YAML configuration file.
+        [RETURNS]: The loaded Dataset object.
+        [SIDE EFFECTS]: Mutates internal catalog registry.
+        """
+        dataset = Dataset.from_yaml(file_path)
+        self.register(dataset)
+        return dataset
+
+    def load_from_dir(self, dir_path: str, recursive: bool = True) -> int:
+        """
+        [PURPOSE]: Automatically scan a configuration directory for YAML dataset files and register them into the catalog.
+        [DEPENDENCIES]: Calls self.load_from_file.
+        [ARGS]:
+            dir_path — Path to directory containing .yaml or .yml dataset configuration files.
+            recursive — Whether to search subdirectories recursively (default True).
+        [RETURNS]: int count of successfully registered datasets.
+        [SIDE EFFECTS]: Mutates internal catalog registry.
+        """
+        if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+            raise CatalogError(f"Catalog directory not found: '{dir_path}'")
+
+        count = 0
+        if recursive:
+            for root, _, files in os.walk(dir_path):
+                for file in files:
+                    if file.endswith(".yaml") or file.endswith(".yml"):
+                        full_path = os.path.join(root, file)
+                        self.load_from_file(full_path)
+                        count += 1
+        else:
+            for file in os.listdir(dir_path):
+                if file.endswith(".yaml") or file.endswith(".yml"):
+                    full_path = os.path.join(dir_path, file)
+                    self.load_from_file(full_path)
+                    count += 1
+
+        return count
+

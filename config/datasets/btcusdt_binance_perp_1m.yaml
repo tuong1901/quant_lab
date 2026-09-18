@@ -1,0 +1,29 @@
+# Dataset Configuration: BTCUSDT Binance Perpetual 1m (LTF Execution Replay)
+dataset_id: btcusdt_binance_perp_1m
+version: 1
+
+market:
+  venue: binance
+  symbol: BTCUSDT
+  market_type: perpetual
+  quote_currency: USDT
+
+timeframe: 1m
+
+data_range:
+  start: "2023-01-01T00:00:00Z"
+  end: "2026-01-01T00:00:00Z"
+
+source:
+  provider: binance
+
+content_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+
+schema_version: 1
+
+storage_reference:
+  type: local
+  path: data/raw/binance/BTCUSDT/1m/v1.parquet
+
+metadata:
+  description: "Lower Timeframe (1m) Replay Dataset for Intrabar Execution Simulation"

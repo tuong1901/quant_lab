@@ -1,0 +1,34 @@
+# Named Dataset Definitions Registry
+datasets:
+
+  btcusdt_15m:
+    dataset_id: btcusdt_binance_perp_15m
+    version: 1
+
+    market:
+      venue: binance
+      symbol: BTCUSDT
+      market_type: perpetual
+      quote_currency: USDT
+
+    timeframe: 15m
+
+    storage_reference:
+      type: local
+      path: data/raw/binance/BTCUSDT/15m/v1.parquet
+
+  btcusdt_1m:
+    dataset_id: btcusdt_binance_perp_1m
+    version: 1
+
+    market:
+      venue: binance
+      symbol: BTCUSDT
+      market_type: perpetual
+      quote_currency: USDT
+
+    timeframe: 1m
+
+    storage_reference:
+      type: local
+      path: data/raw/binance/BTCUSDT/1m/v1.parquet

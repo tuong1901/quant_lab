@@ -1,0 +1,19 @@
+# Parameter Search Space Definitions for Optimization
+search:
+
+  strategy_parameters:
+
+    ema_fast:
+      type: integer
+      min: 5
+      max: 50
+
+    ema_slow:
+      type: integer
+      min: 20
+      max: 200
+
+    rsi_period:
+      type: integer
+      min: 7
+      max: 28
