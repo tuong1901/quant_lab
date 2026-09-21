@@ -72,17 +72,20 @@
   * [src/core/events.py](file:///d:/reverse_indi/src/core/events.py): Dataclass bất biến `Event` (`event_id`, `timestamp` UTC, `sequence` deterministic sorting).
   * Unit test suite `tests/core/`: 15/15 Unit tests **PASS 100%** (`test_exceptions.py`, `test_types.py`, `test_ids.py`, `test_clock.py`, `test_events.py`).
 
+- Xây dựng hoàn chỉnh **Environment Subsystem (`src/environment/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/environment/exceptions.py](file:///d:/reverse_indi/src/environment/exceptions.py): `EnvironmentError`, `EnvironmentConstructionError`, `MissingDependencyError`, `EnvironmentValidationError`.
+  * [src/environment/registry.py](file:///d:/reverse_indi/src/environment/registry.py): Container `Registry` (`register`, `get`, `contains`, `require`) cách ly 100% không dùng global singletons.
+  * [src/environment/environment.py](file:///d:/reverse_indi/src/environment/environment.py): Frozen Dataclass `Environment` (`clock`, `market_data`, `execution`, `portfolio`, `config`, `registry`).
+  * [src/environment/context.py](file:///d:/reverse_indi/src/environment/context.py): Frozen Dataclass `ExecutionContext` (`clock`, `run`, `dataset_id`, `execution_id`).
+  * [src/environment/factory.py](file:///d:/reverse_indi/src/environment/factory.py): Engine `EnvironmentFactory.create(config, clock, market_data, execution_engine, portfolio)` lắp ghép runtime world hoàn chỉnh.
+  * Unit test suite `tests/environment/`: 11/11 Unit tests **PASS 100%** (`test_exceptions.py`, `test_registry.py`, `test_environment.py`, `test_context.py`, `test_factory.py`, `test_integration.py`).
+  * Tổng số unit test toàn hệ thống: **114/114 tests PASS 100%** qua 7 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11).
+
 ## What's next
 - Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
-  1. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
-  2. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
-  3. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
-
-
-
-
-- Giữ vững **Dimension 2 (Simplicity)**: Đóng băng chưa build vội các engine phức tạp (Ray, GA, AI/LLM, WebSocket, Paper, Optuna 1000 strategies) cho đến khi Single Experiment được kiểm chứng đúng đắn.
-
+  1. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
+  2. Tích hợp end-to-end pipeline: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
+  3. Xây dựng module `evaluation/` & `strategies/`.
 
 ## Open issues / Notes
-- None. Hệ thống đã sẵn sàng với bộ khung 10-Phase Enterprise Quant Engine hoàn chỉnh.
+- None. Toàn bộ 7 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`) hoạt động độc lập và liên kết chặt chẽ.
