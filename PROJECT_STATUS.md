@@ -57,13 +57,26 @@
   * [src/market_data/loader.py](file:///d:/reverse_indi/src/market_data/loader.py): `DatasetLoader` và container `MarketData` (đọc Parquet/CSV, validate UTC timestamp, OHLC bounds, content hash, detect missing candles).
   * [src/market_data/compatibility.py](file:///d:/reverse_indi/src/market_data/compatibility.py): Hàm `validate_compatible_datasets(strategy_ds, execution_ds)`.
   * Unit test suite `tests/market_data/`: 30/30 Unit tests **PASS 100%** (`test_market.py`, `test_dataset.py`, `test_versioning_hash.py`, `test_catalog.py`, `test_loader_validation.py`, `test_compatibility.py`, `test_integration.py`).
+- Xây dựng hoàn chỉnh **Config Layer Subsystem (`src/config/` & `config/*.yaml`)** phục vụ **Dimension 1 (Correctness)**:
+  * Structure `config/*.yaml` phẳng & sạch sẽ ([`default.yaml`](file:///d:/reverse_indi/config/default.yaml), [`datasets.yaml`](file:///d:/reverse_indi/config/datasets.yaml), [`execution.yaml`](file:///d:/reverse_indi/config/execution.yaml), [`portfolio.yaml`](file:///d:/reverse_indi/config/portfolio.yaml), [`experiments.yaml`](file:///d:/reverse_indi/config/experiments.yaml), [`search.yaml`](file:///d:/reverse_indi/config/search.yaml)): Đã dọn dẹp các thư mục con rỗng/dư thừa để chuẩn hóa cây cấu hình theo đúng kiến trúc MVP.
+  * [src/config/exceptions.py](file:///d:/reverse_indi/src/config/exceptions.py): `ConfigError`, `ConfigFileNotFoundError`, `ConfigParseError`, `ConfigValidationError`, `ConfigReferenceError`, `ConfigCompatibilityError`.
+  * [src/config/models.py](file:///d:/reverse_indi/src/config/models.py): Typed Dataclasses bất biến (`DefaultEnvConfig`, `DatasetRefConfig`, `ExecutionConfig`, `PortfolioConfig`, `ExperimentTimeConfig`, `ExperimentConfig`).
+  * [src/config/validation.py](file:///d:/reverse_indi/src/config/validation.py): Validation engine `validate_experiment_config(exp_config)`.
+  * [src/config/loader.py](file:///d:/reverse_indi/src/config/loader.py): Class `ConfigLoader` (`load_default_env`, `load_dataset`, `load_execution`, `load_portfolio`, `load_experiment`, `snapshot_experiment`).
+  * Unit test suite `tests/config/`: 19/19 Unit tests **PASS 100%** (`test_loader.py`, `test_models.py`, `test_references.py`, `test_validation.py`, `test_reproducibility.py`).
+- Xây dựng hoàn chỉnh **Core Subsystem (`src/core/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/core/exceptions.py](file:///d:/reverse_indi/src/core/exceptions.py): Root base exception `QuantSystemError`.
+  * [src/core/types.py](file:///d:/reverse_indi/src/core/types.py): Strict UTC temporal validation (`validate_utc_timestamp`, `create_utc_timestamp`) và primitive aliases (`Symbol`, `Price`, `Quantity`).
+  * [src/core/ids.py](file:///d:/reverse_indi/src/core/ids.py): Immutable ID wrappers (`BaseId`, `ExperimentId`, `RunId`, `StrategyId`, `OrderId`, `FillId`, `DatasetId`, `EventId`) hỗ trợ `generate()`.
+  * [src/core/clock.py](file:///d:/reverse_indi/src/core/clock.py): Protocol `Clock`, `HistoricalClock` (cho simulation replay với bất đẳng thức `advance_to(t)` không lùi thời gian), và `RealtimeClock` (UTC now).
+  * [src/core/events.py](file:///d:/reverse_indi/src/core/events.py): Dataclass bất biến `Event` (`event_id`, `timestamp` UTC, `sequence` deterministic sorting).
+  * Unit test suite `tests/core/`: 15/15 Unit tests **PASS 100%** (`test_exceptions.py`, `test_types.py`, `test_ids.py`, `test_clock.py`, `test_events.py`).
 
 ## What's next
 - Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
-  1. `core/`: Primitive types, clock, events, base exception classes.
-  2. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
-  3. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
-  4. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
+  1. `environment/`: `Environment`, `ExecutionContext`, `Config`, `Registry`.
+  2. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
+  3. Tích hợp end-to-end: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
 
 
 

@@ -90,9 +90,33 @@ class TestTimeConfig(unittest.TestCase):
             parse_time_config(data)
 
     def test_load_yaml_file(self):
-        cfg = load_time_config_yaml("config/experiments/time.yaml")
-        self.assertEqual(cfg.mode, "rolling")
-        self.assertEqual(cfg.window_duration, Duration(1, DurationUnit.YEARS))
+        import tempfile
+        import os
+        yaml_content = """
+time:
+  mode: rolling
+  anchor: now
+  range:
+    start: '2024-01-01'
+    end: now
+  window:
+    duration: 1y
+  step:
+    duration: 1mo
+  warmup:
+    duration: 200bars
+  timezone: UTC
+  reproducibility:
+    freeze_anchor: true
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "time.yaml")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(yaml_content)
+            cfg = load_time_config_yaml(file_path)
+            self.assertEqual(cfg.mode, "rolling")
+            self.assertEqual(cfg.window_duration, Duration(1, DurationUnit.YEARS))
 
 if __name__ == "__main__":
     unittest.main()
+

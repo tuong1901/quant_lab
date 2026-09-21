@@ -84,14 +84,20 @@ class TestCatalog(unittest.TestCase):
         self.assertEqual(len(all_ds), 2)
 
     def test_load_catalog_from_dir(self):
-        """Test scanning config/datasets/ directory and loading dataset YAML files."""
-        dir_catalog = DatasetCatalog()
-        count = dir_catalog.load_from_dir("config/datasets")
-        self.assertGreaterEqual(count, 2)
-        self.assertTrue(dir_catalog.exists("btcusdt_binance_perp_15m", 1))
-        self.assertTrue(dir_catalog.exists("btcusdt_binance_perp_1m", 1))
+        """Test scanning a dataset configuration directory and loading dataset YAML files."""
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.ds_v1.to_yaml(os.path.join(temp_dir, "ds1.yaml"))
+            self.ds_v2.to_yaml(os.path.join(temp_dir, "ds2.yaml"))
+            dir_catalog = DatasetCatalog()
+            count = dir_catalog.load_from_dir(temp_dir)
+            self.assertEqual(count, 2)
+            self.assertTrue(dir_catalog.exists("btcusdt_binance_perp_15m", 1))
+            self.assertTrue(dir_catalog.exists("btcusdt_binance_perp_15m", 2))
 
 
 if __name__ == "__main__":
     unittest.main()
+
 
