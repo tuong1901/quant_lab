@@ -111,37 +111,7 @@ class BacktestEngine:
                     if isinstance(val, (int, float)) and not pd.isna(val):
                         features[col] = float(val)
 
-            # 4. Read active portfolio position side
-            active_pos: Optional[Position] = self.environment.portfolio.positions.get(symbol)
-            pos_side: Optional[PositionSide] = None
-            if active_pos is not None and active_pos.quantity > 0:
-                pos_side = active_pos.side
-
-            # 5. Build StrategyContext & evaluate Strategy
-            context = StrategyContext(
-                timestamp=ts,
-                price=close_price,
-                position_side=pos_side,
-                features=features,
-            )
-
-            signal: Signal = self.strategy.on_bar(context)
-            state.signals.append(signal)
-
-            # 6. Signal -> Order translation (Trading period only, skip during warmup)
-            if not is_warmup:
-                orders = self._translate_signal_to_orders(
-                    signal=signal,
-                    symbol=symbol,
-                    current_price=close_price,
-                    timestamp=ts,
-                    current_position=active_pos,
-                )
-                for order in orders:
-                    accepted_order = self.environment.execution.submit_order(order)
-                    state.orders.append(accepted_order)
-
-            # 7. Process market data tick via ExecutionEngine
+            # 4. Process market data tick via ExecutionEngine for pending orders from previous bar(s)
             bar_market_data = {
                 "timestamp": ts,
                 "open": open_price,
@@ -156,19 +126,50 @@ class BacktestEngine:
                 timestamp=ts,
             )
 
-            # 8. Apply Fills to Portfolio
+            # 5. Apply Fills to Portfolio
             for res in exec_results:
                 for fill in res.fills:
                     p_state = self.environment.portfolio.apply_fill(fill)
                     state.fills.append(fill)
 
-            # 9. Portfolio Mark-to-Market
+            # 6. Portfolio Mark-to-Market at Bar T Close
             p_state = self.environment.portfolio.mark_to_market(
                 symbol=symbol,
                 mark_price=close_price,
                 timestamp=ts,
             )
             state.portfolio_states.append(p_state)
+
+            # 7. Read active portfolio position side
+            active_pos: Optional[Position] = self.environment.portfolio.positions.get(symbol)
+            pos_side: Optional[PositionSide] = None
+            if active_pos is not None and active_pos.quantity > 0:
+                pos_side = active_pos.side
+
+            # 8. Build StrategyContext & evaluate Strategy at Bar T Close
+            context = StrategyContext(
+                timestamp=ts,
+                price=close_price,
+                position_side=pos_side,
+                features=features,
+            )
+
+            signal: Signal = self.strategy.on_bar(context)
+            state.signals.append(signal)
+
+            # 9. Signal -> Order translation (Trading period only, skip during warmup)
+            # Submitted orders are registered in ExecutionEngine and will execute starting on Bar T+1
+            if not is_warmup:
+                orders = self._translate_signal_to_orders(
+                    signal=signal,
+                    symbol=symbol,
+                    current_price=close_price,
+                    timestamp=ts,
+                    current_position=active_pos,
+                )
+                for order in orders:
+                    accepted_order = self.environment.execution.submit_order(order)
+                    state.orders.append(accepted_order)
 
             state.bars_processed += 1
             state.current_timestamp = ts

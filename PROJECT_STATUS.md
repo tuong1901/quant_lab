@@ -105,11 +105,30 @@
   * Unit test suite `tests/evaluation/`: 4/4 Unit tests **PASS 100%** (`test_exceptions.py`, `test_metrics.py`).
   * Tổng số unit test toàn hệ thống: **137/137 tests PASS 100%** qua 10 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 9, `evaluation`: 4).
 
+- Thực hiện hoàn chỉnh **Forensic Environment & Backtest Integrity Audit**:
+  * [tests/audit/test_integrity.py](file:///d:/reverse_indi/tests/audit/test_integrity.py): Bổ sung unit tests kiểm tra timing execution, same-bar lookahead, HOLD-only sanity, alternating signals, random strategy determinism, và boundary execution windows.
+  * [tests/audit/test_scenarios.py](file:///d:/reverse_indi/tests/audit/test_scenarios.py): Bổ sung 6 kịch bản thử nghiệm tổng hợp (Scenario A đến F: LONG profit, LONG loss, SHORT profit, SHORT loss, Reversal, Open position end).
+  * [tests/audit/test_reconciliation.py](file:///d:/reverse_indi/tests/audit/test_reconciliation.py): Reconcile 3 giao dịch thực nghiệm bằng tay độc lập và xác minh đẳng thức kế toán ($Initial + Realized + Unrealized - Fees == Final Equity$).
+  * Tổng số unit test toàn hệ thống: **152/152 tests PASS 100%** qua 11 package test modules (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 9, `evaluation`: 4, `audit`: 15).
+
+- Đã khắc phục hoàn chỉnh lỗ hổng **Backtest Execution Timing / Look-Ahead Bug**:
+  * [src/backtest/engine.py](file:///d:/reverse_indi/src/backtest/engine.py): Đổi thứ tự vòng lặp nến trong `BacktestEngine.run()` để `ExecutionEngine.process_market_data()` xử lý các lệnh chờ từ các nến trước ($T-1$) ở đầu nến $T$ trước, sau đó mới cho `Strategy.on_bar()` quan sát giá Close nến $T$ và sinh lệnh mới cho nến $T+1$.
+  * [tests/audit/test_timing_fix.py](file:///d:/reverse_indi/tests/audit/test_timing_fix.py): Bộ kiểm thử hồi quy thời gian với các assertion bắt buộc (`fill.timestamp > order.created_at`, `fill.timestamp == bar_T_plus_1_timestamp`, `fill.price == open_T_plus_1`).
+  * Tổng số unit test toàn hệ thống: **156/156 tests PASS 100%** qua 11 package test modules (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 9, `evaluation`: 4, `audit`: 19).
+
+- Thực hiện hoàn chỉnh **Full Experimental Environment Integrity Audit** theo 15 vùng cơ học & tính lặp lại:
+  * [tests/audit/test_env_integrity.py](file:///d:/reverse_indi/tests/audit/test_env_integrity.py): Bổ sung unit tests kiểm thử Risk-Sizing Trace (Case A & B), Perpetual Funding Model, và State Isolation giữa các Environment độc lập.
+  * Lập báo cáo kiểm thử môi trường chi tiết tại [env_audit_report.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/env_audit_report.md).
+  * Trạng thái chứng nhận môi trường: **NO (NOT VERIFIED)** do các vấn đề cần khắc phục trước khi test strategy: `AUDIT-RISK-01` (Risk-Sizing theo Stop Loss chưa được nạp/áp dụng), `AUDIT-CFG-01` (Bất đồng comment & config phí), `AUDIT-FUND-01` (Vòng lặp funding 8h chưa tích hợp vào BacktestEngine).
+  * Tổng số unit test toàn hệ thống: **156/156 tests PASS 100%** qua 11 package test modules (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 9, `evaluation`: 4, `audit`: 19).
+
 ## What's next
-- Tiếp tục mở rộng hệ thống theo lộ trình **Dimension 1 (Correctness)** / Phase 2 scope:
-  1. Nâng cấp Advanced Evaluation Metrics (Sharpe Ratio, Sortino, Max Drawdown, Profit Factor, Expectancy).
-  2. Integration Runner & Batch Runner.
+- Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.
+- Khắc phục `AUDIT-CFG-01` & `AUDIT-FUND-01`.
 
 ## Open issues / Notes
-- None. Toàn bộ 10 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`, `strategies`, `backtest`, `evaluation`) hoạt động 100% deterministic và liên kết chặt chẽ.
+- `AUDIT-RISK-01` (HIGH): `config/fixed_params.yaml` chứa `risk_per_trade_pct: 0.02` nhưng chưa được nạp vào `RiskManager` / `BacktestEngine` (đang dùng lot cố định 1.0).
+
+
+
 
