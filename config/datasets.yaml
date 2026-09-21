@@ -15,7 +15,7 @@ datasets:
 
     storage_reference:
       type: local
-      path: data/raw/binance/BTCUSDT/15m/v1.parquet
+      path: data/m15-indivip_signal.csv
 
   btcusdt_1m:
     dataset_id: btcusdt_binance_perp_1m

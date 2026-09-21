@@ -90,11 +90,18 @@
   * Unit test suite `tests/strategies/`: 10/10 Unit tests **PASS 100%** (`test_exceptions.py`, `test_signal.py`, `test_context.py`, `test_strategy_contract.py`, `test_ema_strategy.py`).
   * Tổng số unit test toàn hệ thống: **124/124 tests PASS 100%** qua 8 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10).
 
+- Xây dựng hoàn chỉnh **Backtest Engine Subsystem (`src/backtest/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/backtest/exceptions.py](file:///d:/reverse_indi/src/backtest/exceptions.py): `BacktestError`, `BacktestExecutionError`, `InvalidSimulationStateError`.
+  * [src/backtest/state.py](file:///d:/reverse_indi/src/backtest/state.py): Dataclass `BacktestState` (`current_timestamp`, `bars_processed`, `signals`, `orders`, `fills`, `portfolio_states`).
+  * [src/backtest/engine.py](file:///d:/reverse_indi/src/backtest/engine.py): Simulation Loop Orchestrator `BacktestEngine` (`run(df)` với hỗ trợ `HistoricalClock`, phân định cửa sổ Warmup vs Execution, dịch `Signal -> Order`, đẩy lệnh tới `ExecutionEngine`, khớp `Fill` vào `Portfolio`, và `mark_to_market`).
+  * Unit test suite `tests/backtest/`: 7/7 Unit tests **PASS 100%** (`test_exceptions.py`, `test_state.py`, `test_engine.py`).
+  * Tổng số unit test toàn hệ thống: **131/131 tests PASS 100%** qua 9 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 7).
+
 ## What's next
 - Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
-  1. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
-  2. Tích hợp end-to-end pipeline: `Strategy -> Signal -> BacktestEngine -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
-  3. Xây dựng module `evaluation/`.
+  1. `backtest/`: `BacktestResult` & `Runner`.
+  2. `evaluation/`: Performance Metrics (Sharpe, Drawdown, Win Rate, Expectancy, Profit Factor).
+  3. End-to-End Pipeline Verification (`run_pipeline.py`).
 
 ## Open issues / Notes
-- None. Toàn bộ 8 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`, `strategies`) hoạt động độc lập và liên kết chặt chẽ.
+- None. Toàn bộ 9 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`, `strategies`, `backtest`) hoạt động 100% deterministic và liên kết chặt chẽ.
