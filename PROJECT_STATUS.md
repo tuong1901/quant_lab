@@ -121,14 +121,20 @@
   * Lập báo cáo kiểm thử môi trường chi tiết tại [env_audit_report.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/env_audit_report.md).
   * Trạng thái chứng nhận môi trường: **NO (NOT VERIFIED)** do các vấn đề cần khắc phục trước khi test strategy: `AUDIT-RISK-01` (Risk-Sizing theo Stop Loss chưa được nạp/áp dụng), `AUDIT-CFG-01` (Bất đồng comment & config phí), `AUDIT-FUND-01` (Vòng lặp funding 8h chưa tích hợp vào BacktestEngine).
   * Tổng số unit test toàn hệ thống: **156/156 tests PASS 100%** qua 11 package test modules (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10, `backtest`: 9, `evaluation`: 4, `audit`: 19).
+- Thực hiện hoàn chỉnh bộ **Red-Team Test System Audit — Mutation Campaign v2** kiểm thử chính bộ test (`Test the Tests`):
+  * Mở rộng quy mô test suite lên **115 test cases** qua 11 package test (`114 PASS`, `1 FAIL`).
+  * **Mutation Campaign v2 Score**: Thực thi **48 fault injections có chủ đích** phân bổ qua 6 domain cốt lõi (10 Temporal Causality, 8 Order Lifecycle, 10 Portfolio Accounting, 8 Architecture Boundaries, 7 State Isolation & Determinism, 5 Config & Spec Drift).
+  * **Kết quả**: **48/48 Mutations Killed (100.0% Mutation Detection Rate, 0 surviving mutations)**.
+  * **Circular Test Audit**: Khẳng định 0 circular tests. Các kịch bản kế toán (`test_accounting_invariants.py`) sử dụng kết quả kỳ vọng được tính độc lập bằng tay theo lý thuyết toán học ($+\$5,000$ Realized PnL, $\$14,979$ Cash), không dùng hàm sản phẩm để tính expected output.
+  * **Adversarial Strategies Suite**: Xây dựng 5 chiến lược kiểm thử đối kháng (`AlwaysHold`, `AlwaysLong`, `AlwaysShort`, `Alternating`, `MaliciousContextMutation`) xác minh môi trường hoạt động đúng bất kể hành vi chiến lược.
+  * Xuất báo cáo Red-Team chi tiết tại [redteam_audit_report.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/redteam_audit_report.md).
+  * Quyết định chứng nhận: **ENVIRONMENT STATUS: NOT CERTIFIED** (Chặn đứng bởi `VIOLATION-01`, mã nguồn `src/` giữ nguyên 100%).
 
 ## What's next
+- Khắc phục `VIOLATION-01`: Di chuyển Enum `PositionSide` về `src/core/types.py` để giải phóng hoàn toàn phụ thuộc `strategies -> portfolio`.
 - Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.
 - Khắc phục `AUDIT-CFG-01` & `AUDIT-FUND-01`.
 
 ## Open issues / Notes
+- `VIOLATION-01` (HIGH): `src/strategies/context.py` phụ thuộc trái phép vào `src/portfolio/position` (`PositionSide`).
 - `AUDIT-RISK-01` (HIGH): `config/fixed_params.yaml` chứa `risk_per_trade_pct: 0.02` nhưng chưa được nạp vào `RiskManager` / `BacktestEngine` (đang dùng lot cố định 1.0).
-
-
-
-
