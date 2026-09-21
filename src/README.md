@@ -53,3 +53,23 @@ Thư mục chứa toàn bộ logic xử lý định lượng cho Pipeline Quant 
 - **Mục đích**: Đánh giá hiệu năng OOS, log độ ổn định tham số, so sánh fill lệnh, tính Drag ratio và kết luận **PASS / WARN / FAIL**.
 - **Hàm chính**: `generate_pipeline_report()`.
 - **Phụ thuộc**: Output generator for CLI.
+
+---
+
+## Architecture Packages (10-Phase Institutional Modular Design)
+
+- [core/](file:///d:/reverse_indi/src/core/): **[PHASE 0]** Immutable primitives (`types`, `clock`, `events`, `orders`, `fills`, `positions`, `portfolio`, `exceptions`).
+- [environment/](file:///d:/reverse_indi/src/environment/): **[PHASE 0]** Runtime environment, context, configuration parser, and service registry.
+- [market_data/](file:///d:/reverse_indi/src/market_data/): **[PHASE 1]** Data ingestion, cleaner, dataset container, catalog, and MD5 versioning.
+- [features/](file:///d:/reverse_indi/src/features/): **[PHASE 1]** Feature engine, Wilder RMA ATR, Swing Engine, Dynamic Zones, and Causal lag guards.
+- [execution/](file:///d:/reverse_indi/src/execution/): **[PHASE 2]** Execution engine, Dual Fill simulator (Wick vs Close), Slippage, Fee model, Funding rate, and Broker gateway.
+- [portfolio/](file:///d:/reverse_indi/src/portfolio/): **[PHASE 3]** Portfolio account balance, Position manager, Unrealized/Realized PnL, Margin checker, and Risk Manager (% risk sizing).
+- [strategies/](file:///d:/reverse_indi/src/strategies/): **[PHASE 4]** Strategy base interface (`BaseStrategy`), parameter schema, and strategy registry.
+- [backtest/](file:///d:/reverse_indi/src/backtest/): **[PHASE 4]** Backtest engine, event loop dispatcher, session runner, and Purged WFO splitter.
+- [evaluation/](file:///d:/reverse_indi/src/evaluation/): **[PHASE 5]** Quantitative metrics (Sharpe, MaxDD, WinRate), Fee drag cost analyzer, robustness, and diagnostic tools.
+- [experiments/](file:///d:/reverse_indi/src/experiments/): **[PHASE 0/5]** Experiment definition, runner, tracking registry, and artifact JSON saver.
+- [batch/](file:///d:/reverse_indi/src/batch/): **[PHASE 6]** Multi-process parallel batch runner (100–1000 strategies), job schema, queue, and result ranking.
+- [generator/](file:///d:/reverse_indi/src/generator/): **[PHASE 7]** Strategy factory, DSL rule grammar, building blocks, and Bayesian parameter sampler.
+- [evolution/](file:///d:/reverse_indi/src/evolution/): **[PHASE 8]** Genetic algorithm engine, population manager, crossover & mutation operators, overfit-penalized fitness, and tournament selection.
+- [paper/](file:///d:/reverse_indi/src/paper/): **[PHASE 9]** Live exchange WebSocket data stream, paper order router, state reconciler, Telegram notifier, and system health monitor.
+

@@ -1,0 +1,21 @@
+# Portfolio & Risk Subsystem Presets
+portfolio:
+
+  default:
+
+    account:
+      initial_capital: 10000.0
+      currency: USDT
+
+    leverage:
+      mode: fixed
+      value: 5
+
+    position:
+      allow_short: true
+      max_position_size: 1.0
+      max_notional: 50000.0
+
+    risk:
+      max_leverage: 5
+      max_exposure: 50000.0

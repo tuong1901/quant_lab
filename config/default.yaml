@@ -1,0 +1,14 @@
+# Default Environment & System Configuration
+system:
+  name: quant_lab
+  timezone: UTC
+
+clock:
+  mode: historical
+
+reproducibility:
+  seed: 42
+  freeze_anchor: true
+
+boundary:
+  policy: strict

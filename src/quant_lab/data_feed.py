@@ -81,7 +81,7 @@ def calculate_causal_atr(df: pd.DataFrame, period: int = 14) -> np.ndarray:
     return atr
 
 
-def calculate_causal_swings(df: pd.DataFrame, lookback: int = 20) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def calculate_causal_swings(df: pd.DataFrame, lookback: int = 100) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     [PURPOSE]: Identify causal swing high and swing low pivot points.
     [DEPENDENCIES]: Called by Projection Engine to compute swing ranges.
