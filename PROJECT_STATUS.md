@@ -81,11 +81,20 @@
   * Unit test suite `tests/environment/`: 11/11 Unit tests **PASS 100%** (`test_exceptions.py`, `test_registry.py`, `test_environment.py`, `test_context.py`, `test_factory.py`, `test_integration.py`).
   * Tổng số unit test toàn hệ thống: **114/114 tests PASS 100%** qua 7 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11).
 
+- Xây dựng hoàn chỉnh **Strategy Contract Subsystem (`src/strategies/`)** phục vụ **Dimension 1 (Correctness)**:
+  * [src/strategies/exceptions.py](file:///d:/reverse_indi/src/strategies/exceptions.py): `StrategyError`, `InvalidSignalError`, `StrategyContextError`.
+  * [src/strategies/signal.py](file:///d:/reverse_indi/src/strategies/signal.py): Enum `SignalAction` (`HOLD`, `LONG`, `SHORT`) và Frozen Dataclass `Signal` (`timestamp`, `action`, `strategy_id`, `metadata`).
+  * [src/strategies/context.py](file:///d:/reverse_indi/src/strategies/context.py): Read-only Frozen Dataclass `StrategyContext` (`timestamp`, `price`, `position_side`, `features`).
+  * [src/strategies/strategy.py](file:///d:/reverse_indi/src/strategies/strategy.py): Protocol Contract `Strategy` (`@runtime_checkable`) định nghĩa `on_bar(context) -> Signal`.
+  * [src/strategies/ema.py](file:///d:/reverse_indi/src/strategies/ema.py): Reference Strategy `EMAStrategy` (`EMA20 > EMA50 -> LONG`, `EMA20 < EMA50 -> SHORT`, equal/missing -> `HOLD`).
+  * Unit test suite `tests/strategies/`: 10/10 Unit tests **PASS 100%** (`test_exceptions.py`, `test_signal.py`, `test_context.py`, `test_strategy_contract.py`, `test_ema_strategy.py`).
+  * Tổng số unit test toàn hệ thống: **124/124 tests PASS 100%** qua 8 subsystem hoàn tất (`core`: 15, `config`: 19, `market_data`: 30, `experiments`: 14, `execution`: 12, `portfolio`: 14, `environment`: 11, `strategies`: 10).
+
 ## What's next
 - Tiếp tục xây dựng các module tiếp theo của **Dimension 1 (Correctness)**:
   1. `backtest/`: `BacktestEngine`, `EventLoop`, `Runner`, `BacktestResult`.
-  2. Tích hợp end-to-end pipeline: `Strategy -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
-  3. Xây dựng module `evaluation/` & `strategies/`.
+  2. Tích hợp end-to-end pipeline: `Strategy -> Signal -> BacktestEngine -> Order -> RiskManager -> ExecutionEngine -> Fill -> Portfolio -> PortfolioState -> BacktestResult`.
+  3. Xây dựng module `evaluation/`.
 
 ## Open issues / Notes
-- None. Toàn bộ 7 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`) hoạt động độc lập và liên kết chặt chẽ.
+- None. Toàn bộ 8 subsystem nền tảng (`core`, `config`, `market_data`, `experiments`, `execution`, `portfolio`, `environment`, `strategies`) hoạt động độc lập và liên kết chặt chẽ.
