@@ -15,6 +15,7 @@ from src.execution.order import Order, OrderSide, OrderType
 from src.portfolio.position import PositionSide, Position
 from src.experiments.run import ExperimentRun
 from src.backtest.state import BacktestState
+from src.backtest.result import BacktestResult
 from src.backtest.exceptions import BacktestExecutionError
 
 
@@ -172,7 +173,39 @@ class BacktestEngine:
             state.bars_processed += 1
             state.current_timestamp = ts
 
-        return state
+        final_p_state = (
+            self.environment.portfolio.get_state(state.current_timestamp)
+            if state.current_timestamp
+            else None
+        )
+
+        run_id = self.experiment_run.run_id if self.experiment_run else "default_run"
+        raw_strat_id = getattr(self.strategy, "strategy_id", "default_strategy")
+        strategy_id = (
+            raw_strat_id.value if hasattr(raw_strat_id, "value") else str(raw_strat_id)
+        )
+
+        dataset_id = "default_dataset"
+        if hasattr(self.environment, "config") and hasattr(
+            self.environment.config, "strategy_dataset"
+        ):
+            dataset_id = getattr(
+                self.environment.config.strategy_dataset, "dataset_id", "default_dataset"
+            )
+
+        return BacktestResult(
+            run_id=run_id,
+            strategy_id=strategy_id,
+            dataset_id=dataset_id,
+            initial_capital=self.environment.portfolio.initial_capital,
+            bars_processed=state.bars_processed,
+            final_timestamp=state.current_timestamp,
+            signals=tuple(state.signals),
+            orders=tuple(state.orders),
+            fills=tuple(state.fills),
+            portfolio_history=tuple(state.portfolio_states),
+            final_portfolio=final_p_state,
+        )
 
     def _translate_signal_to_orders(
         self,

@@ -11,6 +11,7 @@ from src.backtest.exceptions import (
     InvalidSimulationStateError,
 )
 from src.backtest.state import BacktestState
+from src.backtest.result import BacktestResult
 from src.backtest.engine import BacktestEngine
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "BacktestExecutionError",
     "InvalidSimulationStateError",
     "BacktestState",
+    "BacktestResult",
     "BacktestEngine",
 ]
