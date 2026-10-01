@@ -5,9 +5,9 @@ EnvironmentFactory runtime composition engine for building Environment instances
 from typing import Optional, Any
 
 from src.core.clock import HistoricalClock
-from src.market_data.loader import DatasetLoader
-from src.execution.execution_engine import ExecutionEngine
-from src.portfolio.portfolio import Portfolio
+from src.data.loader import DatasetLoader
+from src.engine.execution_engine import ExecutionEngine
+from src.environment.portfolio import Portfolio
 from src.config.models import ExperimentConfig
 from src.environment.environment import Environment
 from src.environment.registry import Registry
