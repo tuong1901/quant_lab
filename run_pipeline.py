@@ -12,13 +12,18 @@ import yaml
 import numpy as np
 import pandas as pd
 
-from src.quant_lab.data_feed import load_m15_ohlcv, calculate_causal_atr, calculate_causal_swings
-from src.quant_lab.zone_engine import load_active_zones
-from src.quant_lab.wfo_splitter import PurgedWFOSplitter
-from src.quant_lab.optimizer import run_optuna_study
-from src.quant_lab.execution_simulator import run_trade_simulation
-from src.quant_lab.alpha_decay import evaluate_time_horizons, evaluate_trade_count_horizons, compute_alpha_decay_summary
-from src.quant_lab.reporting import generate_pipeline_report
+from src.market_data.loader import load_m15_ohlcv
+from src.features.indicators import calculate_causal_atr, calculate_causal_swings
+from src.features.zones import load_active_zones
+from src.experiments.splitter import PurgedWFOSplitter
+from src.backtest.optimizer import run_optuna_study
+from src.backtest.simulator import run_trade_simulation
+from src.evaluation.alpha_decay import (
+    evaluate_time_horizons,
+    evaluate_trade_count_horizons,
+    compute_alpha_decay_summary,
+)
+from src.evaluation.reporting import generate_pipeline_report
 
 
 def parse_args():

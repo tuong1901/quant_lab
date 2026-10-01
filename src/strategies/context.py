@@ -6,8 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Optional
 
-from src.portfolio.position import PositionSide
-from src.core.types import validate_utc_timestamp
+from src.core.types import PositionSide, validate_utc_timestamp
 from src.strategies.exceptions import StrategyContextError
 
 

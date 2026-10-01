@@ -7,12 +7,23 @@ Provides temporal UTC validation and shared primitive type aliases.
 from datetime import datetime, timezone
 from typing import Union
 
+from enum import Enum
+
 from src.core.exceptions import QuantSystemError
 
 # Shared Primitive Type Aliases
 Symbol = str
 Price = float
 Quantity = float
+
+
+class PositionSide(Enum):
+    """
+    [PURPOSE]: System primitive enum representing market exposure directional side.
+    """
+    LONG = "LONG"
+    SHORT = "SHORT"
+
 
 
 def validate_utc_timestamp(dt: datetime) -> datetime:

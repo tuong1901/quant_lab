@@ -41,9 +41,27 @@ class MissingDependencyError(EnvironmentError):
 class EnvironmentValidationError(EnvironmentError):
     """
     [PURPOSE]: Raised when validation on an Environment state or runtime composition fails.
-    [DEPENDENCIES]: Inherits from EnvironmentError.
-    [ARGS]: Standard exception args.
-    [RETURNS]: Exception instance.
-    [SIDE EFFECTS]: None.
     """
     pass
+
+
+class PortfolioException(QuantSystemError):
+    """Base exception for portfolio accounting and position errors."""
+    pass
+
+
+class InsufficientMarginError(PortfolioException):
+    pass
+
+
+class InvalidPositionError(PortfolioException):
+    pass
+
+
+class RiskRejectError(PortfolioException):
+    pass
+
+
+class DuplicateFillError(PortfolioException):
+    pass
+
