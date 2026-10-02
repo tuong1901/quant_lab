@@ -19,6 +19,11 @@ from src.experiments.planner import (
     DatasetRange,
     PlanningError,
 )
+from src.experiments.optimizer import (
+    run_optuna_study,
+    evaluate_plateau_champion,
+    objective_function,
+)
 
 __all__ = [
     "TimeConfig",
@@ -33,4 +38,7 @@ __all__ = [
     "TimePlanner",
     "DatasetRange",
     "PlanningError",
+    "run_optuna_study",
+    "evaluate_plateau_champion",
+    "objective_function",
 ]

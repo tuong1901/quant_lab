@@ -15,16 +15,17 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import pandas as pd
 
-from src.core.ids import EventId, StrategyId, OrderId, FillId
-from src.core.clock import HistoricalClock
-from src.core.exceptions import QuantSystemError
+from src.trading.execution.order import EventId, OrderId, FillId
+from src.strategies.strategy import StrategyId
+from src.trading.backtest import HistoricalClock
+from src.trading.execution.exceptions import QuantSystemError
 from src.data.loader import DatasetLoader
 from src.data.exceptions import DataValidationError
-from src.engine.execution.fill import Fill
-from src.engine.execution.order import OrderSide, Order, OrderType, OrderStatus
-from src.environment.accounting.portfolio import Portfolio
-from src.environment.accounting.position import PositionSide
-from src.environment.accounting.pnl import calculate_realized_pnl, calculate_unrealized_pnl
+from src.trading.execution.fill import Fill
+from src.trading.execution.order import OrderSide, Order, OrderType, OrderStatus
+from src.trading.portfolio.portfolio import Portfolio
+from src.trading.portfolio.position import PositionSide
+from src.trading.portfolio.pnl import calculate_realized_pnl, calculate_unrealized_pnl
 from src.strategies.context import StrategyContext
 from src.config.models import ExecutionConfig, PortfolioConfig
 from src.config.exceptions import ConfigValidationError
@@ -232,7 +233,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
 
     def test_m_port_06_duplicate_fill_double_debits_cash_detected(self):
         """[M-PORT-06]: Duplicate fill application double-debiting cash MUST fail duplicate fill filter."""
-        from src.environment.exceptions import DuplicateFillError
+        from src.trading.portfolio.exceptions import DuplicateFillError
         portfolio = Portfolio(initial_capital=10000.0)
         fill = Fill("f1", "o1", "BTCUSDT", OrderSide.BUY, 1.0, 50000.0, timestamp=self.now, fee=10.0)
         portfolio.apply_fill(fill)
@@ -243,7 +244,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
         """[M-PORT-07]: Position quantity dropping below 0 MUST be rejected by Position post-init validation."""
         with self.assertRaises((ValueError, QuantSystemError, Exception)):
             # Position quantity must be > 0
-            from src.environment.accounting.position import Position
+            from src.trading.portfolio.position import Position
             Position(symbol="BTCUSDT", side=PositionSide.LONG, quantity=-1.0, entry_price=50000.0, timestamp=self.now)
 
     def test_m_port_08_short_pnl_using_long_formula_detected(self):
@@ -284,7 +285,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
     def test_m_arch_02_strategy_imports_execution_engine_detected(self):
         """[M-ARCH-02]: Strategy file referencing ExecutionEngine MUST fail strategy AST boundary check."""
         import ast
-        source = "from src.engine.execution.execution_engine import ExecutionEngine"
+        source = "from src.trading.execution.broker import ExecutionEngine"
         tree = ast.parse(source)
         found_forbidden = False
         for node in ast.walk(tree):
@@ -314,7 +315,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
     def test_m_arch_05_portfolio_imports_backtest_engine_detected(self):
         """[M-ARCH-05]: Portfolio module importing BacktestEngine MUST fail AST boundary check."""
         import ast
-        source = "from src.engine.backtest.backtest_engine import BacktestEngine"
+        source = "from src.trading.backtest import BacktestEngine"
         tree = ast.parse(source)
         found = any(isinstance(n, ast.ImportFrom) and ("engine" in str(n.module) or "backtest" in str(n.module)) for n in ast.walk(tree))
         self.assertTrue(found, "M-ARCH-05: BacktestEngine import detection failed!")
@@ -383,7 +384,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
 
     def test_m_iso_06_cross_environment_registry_mutation_detected(self):
         """[M-ISO-06]: Registering component in env1 mutating env2 registry MUST fail registry isolation."""
-        from src.environment.runtime.registry import Registry
+        from src.trading.backtest import Registry
         r1 = Registry()
         r2 = Registry()
         r1.register("service", "value1")

@@ -5,7 +5,21 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, Any
+from src.data.dataset import BaseId
 from src.experiments.window import TimeWindow
+
+
+@dataclass(frozen=True)
+class ExperimentId(BaseId):
+    """[PURPOSE]: Unique identifier for an Experiment."""
+    pass
+
+
+@dataclass(frozen=True)
+class RunId(BaseId):
+    """[PURPOSE]: Unique identifier for an ExperimentRun."""
+    pass
+
 
 @dataclass(frozen=True)
 class ExperimentRun:

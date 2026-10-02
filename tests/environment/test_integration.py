@@ -21,7 +21,7 @@ class TestEnvironmentIntegration(unittest.TestCase):
 
     def test_full_environment_lifecycle_pipeline(self):
         """Test creating Environment and ExecutionContext from Config."""
-        from src.environment import (
+        from src.trading import (
             EnvironmentFactory,
             Environment,
             ExecutionContext,

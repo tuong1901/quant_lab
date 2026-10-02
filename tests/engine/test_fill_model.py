@@ -5,7 +5,7 @@
 
 import unittest
 from datetime import datetime, timezone
-from src.engine import (
+from src.trading import (
     Order,
     OrderSide,
     OrderType,

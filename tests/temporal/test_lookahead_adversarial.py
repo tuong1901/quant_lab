@@ -8,9 +8,9 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.runtime.factory import EnvironmentFactory
+from src.trading.backtest import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
-from src.engine.backtest.backtest_engine import BacktestEngine
+from src.trading.backtest import BacktestEngine
 
 
 class TestLookaheadAdversarial(unittest.TestCase):

@@ -2,10 +2,7 @@
 Exceptions for the Strategy Subsystem (`src/strategies/exceptions.py`).
 """
 
-from src.core.exceptions import QuantSystemError
-
-
-class StrategyError(QuantSystemError):
+class StrategyError(Exception):
     """
     [PURPOSE]: Root base exception for all strategy subsystem errors.
     [DEPENDENCIES]: Inherits from src.core.exceptions.QuantSystemError.

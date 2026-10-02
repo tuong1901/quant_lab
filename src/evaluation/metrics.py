@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple
 
-from src.engine.backtest.backtest_result import BacktestResult
+from src.trading.backtest import BacktestResult
 from src.evaluation.exceptions import InvalidEvaluationError
 
 

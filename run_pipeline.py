@@ -16,8 +16,8 @@ from src.data.loader import load_m15_ohlcv
 from src.features.indicators import calculate_causal_atr, calculate_causal_swings
 from src.features.zones import load_active_zones
 from src.experiments.splitter import PurgedWFOSplitter
-from src.engine.optimizer import run_optuna_study
-from src.engine.simulator import run_trade_simulation
+from src.experiments.optimizer import run_optuna_study
+from src.trading.backtest import run_trade_simulation
 from src.evaluation.alpha_decay import (
     evaluate_time_horizons,
     evaluate_trade_count_horizons,

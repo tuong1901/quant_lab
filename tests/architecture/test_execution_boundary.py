@@ -7,10 +7,10 @@ import ast
 from pathlib import Path
 import unittest
 
-from src.engine.execution.execution_engine import ExecutionEngine
-from src.engine.execution.order import Order, OrderSide, OrderType, OrderStatus
-from src.engine.execution.fill import Fill
-from src.engine.execution.result import ExecutionResult
+from src.trading.execution.broker import ExecutionEngine
+from src.trading.execution.order import Order, OrderSide, OrderType, OrderStatus
+from src.trading.execution.fill import Fill
+from src.trading.execution.broker import ExecutionResult
 from datetime import datetime, timezone
 
 

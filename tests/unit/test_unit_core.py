@@ -6,11 +6,11 @@
 import unittest
 from datetime import datetime, timezone, timedelta
 
-from src.core.types import validate_utc_timestamp
-from src.core.clock import HistoricalClock
-from src.core.ids import ExperimentId, EventId
-from src.core.events import Event
-from src.core.exceptions import QuantSystemError
+from src.data.timeframe import validate_utc_timestamp
+from src.trading.backtest import HistoricalClock
+from src.experiments.run import ExperimentId
+from src.trading.execution.order import EventId, Event
+from src.trading.execution.exceptions import QuantSystemError
 
 
 class TestUnitCore(unittest.TestCase):

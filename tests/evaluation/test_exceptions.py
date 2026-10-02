@@ -4,7 +4,7 @@ Unit tests for Evaluation Subsystem Exception hierarchy (`src/evaluation/excepti
 
 import unittest
 
-from src.core.exceptions import QuantSystemError
+from src.trading.execution.exceptions import QuantSystemError
 
 
 class TestEvaluationExceptions(unittest.TestCase):

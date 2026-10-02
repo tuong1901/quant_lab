@@ -6,10 +6,39 @@ from dataclasses import dataclass
 from datetime import datetime
 import yaml
 
-from src.core.types import validate_utc_timestamp, create_utc_timestamp
-from src.data.exceptions import InvalidDatasetError
+import uuid
+from typing import Type, TypeVar
+from src.data.timeframe import validate_utc_timestamp, create_utc_timestamp, Timeframe
+from src.data.exceptions import InvalidDatasetError, DataValidationError
 from src.data.market import Market
-from src.data.timeframe import Timeframe
+
+T = TypeVar("T", bound="BaseId")
+
+
+@dataclass(frozen=True)
+class BaseId:
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value or not isinstance(self.value, str) or not self.value.strip():
+            raise DataValidationError(f"{self.__class__.__name__} value must be a non-empty string.")
+        object.__setattr__(self, "value", self.value.strip())
+
+    def __str__(self) -> str:
+        return self.value
+
+    @classmethod
+    def generate(cls: Type[T], prefix: str = "") -> T:
+        unique_hex = uuid.uuid4().hex[:12]
+        full_val = f"{prefix}_{unique_hex}" if prefix else unique_hex
+        return cls(value=full_val)
+
+
+@dataclass(frozen=True)
+class DatasetId(BaseId):
+    """[PURPOSE]: Unique identifier for a Dataset."""
+    pass
+
 
 
 @dataclass(frozen=True)

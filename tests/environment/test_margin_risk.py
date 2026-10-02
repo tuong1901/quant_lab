@@ -5,8 +5,8 @@
 
 import unittest
 from datetime import datetime, timezone
-from src.engine import Order, OrderSide, OrderType
-from src.environment import (
+from src.trading import Order, OrderSide, OrderType
+from src.trading import (
     Portfolio,
     SimpleMarginModel,
     RiskManager,

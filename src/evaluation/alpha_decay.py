@@ -6,7 +6,7 @@
 from typing import List, Dict, Any, Tuple
 import numpy as np
 import pandas as pd
-from src.engine.backtest.simulator import run_trade_simulation
+from src.trading.backtest import run_trade_simulation
 
 
 def evaluate_time_horizons(

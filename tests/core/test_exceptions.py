@@ -12,7 +12,7 @@ class TestCoreExceptions(unittest.TestCase):
 
     def test_quant_system_error_hierarchy(self):
         """Test that QuantSystemError inherits from Exception and can be caught as base exception."""
-        from src.core.exceptions import QuantSystemError
+        from src.trading.execution.exceptions import QuantSystemError
 
         err = QuantSystemError("System root error")
         self.assertIsInstance(err, Exception)

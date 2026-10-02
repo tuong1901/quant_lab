@@ -3,10 +3,7 @@
 [DEPENDENCIES]: Inherits from src.core.exceptions.QuantSystemError.
 """
 
-from src.core.exceptions import QuantSystemError
-
-
-class EvaluationError(QuantSystemError):
+class EvaluationError(Exception):
     """
     [PURPOSE]: Base exception for all evaluation domain errors.
     [DEPENDENCIES]: Subclass of QuantSystemError.

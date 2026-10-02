@@ -6,11 +6,11 @@
 import unittest
 from datetime import datetime, timezone
 
-from src.engine.execution.fill import Fill
-from src.engine.execution.order import OrderSide
-from src.environment.accounting.portfolio import Portfolio
-from src.environment.accounting.pnl import calculate_realized_pnl
-from src.environment.accounting.position import PositionSide
+from src.trading.execution.fill import Fill
+from src.trading.execution.order import OrderSide
+from src.trading.portfolio.portfolio import Portfolio
+from src.trading.portfolio.pnl import calculate_realized_pnl
+from src.trading.portfolio.position import PositionSide
 
 
 class TestAdversarialMutations(unittest.TestCase):

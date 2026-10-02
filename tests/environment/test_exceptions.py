@@ -3,7 +3,7 @@ Unit tests for Environment subsystem exceptions (`src/environment/exceptions.py`
 """
 
 import unittest
-from src.core.exceptions import QuantSystemError
+from src.trading.execution.exceptions import QuantSystemError
 
 
 class TestEnvironmentExceptions(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestEnvironmentExceptions(unittest.TestCase):
 
     def test_environment_error_hierarchy(self):
         """Test that EnvironmentError inherits from QuantSystemError."""
-        from src.environment.exceptions import (
+        from src.trading.portfolio.exceptions import (
             EnvironmentError,
             EnvironmentConstructionError,
             MissingDependencyError,

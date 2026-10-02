@@ -4,7 +4,7 @@ Unit tests for Strategy Subsystem Exception hierarchy (`src/strategies/exception
 
 import unittest
 
-from src.core.exceptions import QuantSystemError
+from src.trading.execution.exceptions import QuantSystemError
 
 
 class TestStrategyExceptions(unittest.TestCase):

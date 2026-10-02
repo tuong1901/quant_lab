@@ -12,7 +12,7 @@ class TestRegistry(unittest.TestCase):
 
     def test_register_and_get(self):
         """Test registering and retrieving named runtime objects."""
-        from src.environment.runtime.registry import Registry
+        from src.trading.backtest import Registry
 
         reg = Registry()
         reg.register("clock_mode", "historical")
@@ -22,8 +22,8 @@ class TestRegistry(unittest.TestCase):
 
     def test_require_existing_and_missing_key(self):
         """Test require returns value for existing key and raises MissingDependencyError for missing key."""
-        from src.environment.runtime.registry import Registry
-        from src.environment.exceptions import MissingDependencyError
+        from src.trading.backtest import Registry
+        from src.trading.backtest import MissingDependencyError
 
         reg = Registry()
         reg.register("data_source", "parquet")
@@ -35,8 +35,8 @@ class TestRegistry(unittest.TestCase):
 
     def test_duplicate_registration_raises_error(self):
         """Test that registering duplicate key raises EnvironmentConstructionError."""
-        from src.environment.runtime.registry import Registry
-        from src.environment.exceptions import EnvironmentConstructionError
+        from src.trading.backtest import Registry
+        from src.trading.backtest import EnvironmentConstructionError
 
         reg = Registry()
         reg.register("key1", "val1")
@@ -46,7 +46,7 @@ class TestRegistry(unittest.TestCase):
 
     def test_registry_local_isolation(self):
         """Test that two Registry instances are completely isolated without global shared state."""
-        from src.environment.runtime.registry import Registry
+        from src.trading.backtest import Registry
 
         reg1 = Registry()
         reg2 = Registry()

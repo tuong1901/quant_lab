@@ -5,8 +5,8 @@
 
 import unittest
 
-from src.environment.accounting.pnl import calculate_realized_pnl
-from src.environment.accounting.position import PositionSide
+from src.trading.portfolio.pnl import calculate_realized_pnl
+from src.trading.portfolio.position import PositionSide
 
 
 class TestRangeProperties(unittest.TestCase):

@@ -6,8 +6,17 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Optional
 
-from src.core.types import PositionSide, validate_utc_timestamp
+from enum import Enum
+from src.data.timeframe import validate_utc_timestamp
 from src.strategies.exceptions import StrategyContextError
+
+
+class PositionSide(Enum):
+    """
+    [PURPOSE]: Enum representing market exposure directional side (LONG / SHORT).
+    """
+    LONG = "LONG"
+    SHORT = "SHORT"
 
 
 @dataclass(frozen=True)
