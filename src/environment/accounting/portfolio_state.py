@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict
 
 from src.core.types import validate_utc_timestamp
-from src.environment.position import Position
+from src.environment.accounting.position import Position
 from src.environment.exceptions import PortfolioException
 
 

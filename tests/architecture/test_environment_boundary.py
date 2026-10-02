@@ -8,7 +8,7 @@ from pathlib import Path
 import unittest
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
+from src.environment.runtime.factory import EnvironmentFactory
 
 
 class TestEnvironmentBoundary(unittest.TestCase):

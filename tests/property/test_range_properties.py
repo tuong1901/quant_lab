@@ -1,12 +1,12 @@
 """
 [PURPOSE]: Property-based tests verifying monotonic PnL behaviors and non-negativity range properties.
-[DEPENDENCIES]: unittest, src.environment.pnl.
+[DEPENDENCIES]: unittest, src.environment.accounting.pnl.
 """
 
 import unittest
 
-from src.environment.pnl import calculate_realized_pnl
-from src.environment.position import PositionSide
+from src.environment.accounting.pnl import calculate_realized_pnl
+from src.environment.accounting.position import PositionSide
 
 
 class TestRangeProperties(unittest.TestCase):

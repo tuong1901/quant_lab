@@ -146,6 +146,11 @@
   * **Golden Behavioral Baseline Verification**: Chạy kiểm tra so sánh với snapshot `golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH** (103/103 trades khớp chính xác tuyệt đối từng số thập phân, Final Equity = $11,812.54).
   * **Pine Script Reconstruction Verification**: Chạy `scripts/validate_reconstruction.py` xác minh độ chính xác 99.9884%.
   * Lập báo cáo nghiệm thu kiến trúc chi tiết tại [docs/architecture_certification_report.md](file:///d:/reverse_indi/docs/architecture_certification_report.md) và audit simplification tại [docs/architecture_simplification_audit.md](file:///d:/reverse_indi/docs/architecture_simplification_audit.md).
+- Thực hiện thành công bài task Chia nhỏ Sub-package cho `src/engine/` và `src/environment/` theo [REQ-20261002-engine-subfolder-organization.md](file:///d:/reverse_indi/docs/requirements/REQ-20261002-engine-subfolder-organization.md):
+  * **Tách Sub-package Single Responsibility**: Tách `src/engine/` thành 3 sub-packages (`execution/`, `models/`, `backtest/`) và `src/environment/` thành 2 sub-packages (`accounting/`, `runtime/`).
+  * **100% Backward-Compatible Re-exports**: `src/engine/__init__.py` và `src/environment/__init__.py` re-export đầy đủ các public symbols.
+  * **Toàn bộ Unit Test Suite PASS 100%**: 115/115 unit tests vượt qua 100%.
+  * **Golden Baseline Verification**: `run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH**.
 
 ## What's next
 - Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.

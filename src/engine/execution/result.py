@@ -4,8 +4,8 @@ ExecutionResult Audit Trail Container (`src/engine/result.py`).
 
 from dataclasses import dataclass, field
 from typing import List
-from src.engine.fill import Fill
-from src.engine.order import Order
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import Order
 
 
 @dataclass

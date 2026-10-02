@@ -9,10 +9,10 @@ from datetime import datetime, timezone
 from src.strategies.signal import Signal, SignalAction
 from src.strategies.context import StrategyContext
 from src.strategies.ema import EMAStrategy
-from src.engine.order import Order, OrderSide, OrderType
-from src.engine.fill import Fill
+from src.engine.execution.order import Order, OrderSide, OrderType
+from src.engine.execution.fill import Fill
 from src.core.exceptions import QuantSystemError
-from src.environment.portfolio import Portfolio
+from src.environment.accounting.portfolio import Portfolio
 
 
 class TestDomainContracts(unittest.TestCase):

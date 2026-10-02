@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Optuna Bayesian Optimizer & Plateau Champion Engine (`src/engine/optimizer.py`).
-[DEPENDENCIES]: numpy, optuna, src.engine.simulator.
+[DEPENDENCIES]: numpy, optuna, src.engine.backtest.simulator.
 """
 
 from typing import Dict, Any, List, Tuple
@@ -8,7 +8,7 @@ import numpy as np
 import optuna
 from optuna.samplers import TPESampler
 
-from src.engine.simulator import run_trade_simulation
+from src.engine.backtest.simulator import run_trade_simulation
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 

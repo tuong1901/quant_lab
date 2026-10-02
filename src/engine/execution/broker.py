@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from src.engine.order import Order, OrderStatus
-from src.engine.result import ExecutionResult
+from src.engine.execution.order import Order, OrderStatus
+from src.engine.execution.result import ExecutionResult
 
 
 class Broker(ABC):

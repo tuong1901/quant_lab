@@ -3,7 +3,7 @@ Fee Subsystem Models (`src/engine/fee.py`).
 """
 
 from abc import ABC, abstractmethod
-from src.engine.order import OrderType
+from src.engine.execution.order import OrderType
 
 
 class FeeModel(ABC):

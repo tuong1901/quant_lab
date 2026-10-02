@@ -7,10 +7,10 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
+from src.environment.runtime.factory import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
 from src.strategies.signal import SignalAction
-from src.environment.position import PositionSide
+from src.environment.accounting.position import PositionSide
 from src.experiments.window import TimeWindow
 from src.experiments.run import ExperimentRun
 
@@ -45,8 +45,8 @@ class TestBacktestEngine(unittest.TestCase):
 
     def test_engine_basic_loop_and_state(self):
         """Test basic simulation loop processing all DataFrame rows."""
-        from src.engine.backtest_engine import BacktestEngine
-        from src.engine.result import BacktestResult
+        from src.engine.backtest.backtest_engine import BacktestEngine
+        from src.engine.execution.result import BacktestResult
 
         env = EnvironmentFactory.create(config=self.config)
         strat = EMAStrategy(fast_period=20, slow_period=50)
@@ -61,7 +61,7 @@ class TestBacktestEngine(unittest.TestCase):
 
     def test_engine_signal_to_order_translation(self):
         """Test that LONG, SHORT, and HOLD signals are translated to appropriate orders."""
-        from src.engine.backtest_engine import BacktestEngine
+        from src.engine.backtest.backtest_engine import BacktestEngine
 
         env = EnvironmentFactory.create(config=self.config)
         strat = EMAStrategy(fast_period=20, slow_period=50)
@@ -74,7 +74,7 @@ class TestBacktestEngine(unittest.TestCase):
 
     def test_engine_clock_advancement(self):
         """Test that engine advances historical clock chronologically per bar."""
-        from src.engine.backtest_engine import BacktestEngine
+        from src.engine.backtest.backtest_engine import BacktestEngine
 
         env = EnvironmentFactory.create(config=self.config)
         strat = EMAStrategy(fast_period=20, slow_period=50)
@@ -86,7 +86,7 @@ class TestBacktestEngine(unittest.TestCase):
 
     def test_engine_warmup_window_behavior(self):
         """Test that warmup window period generates no trading orders."""
-        from src.engine.backtest_engine import BacktestEngine
+        from src.engine.backtest.backtest_engine import BacktestEngine
 
         window = TimeWindow(
             warmup_start=self.start_time,
@@ -107,7 +107,7 @@ class TestBacktestEngine(unittest.TestCase):
 
     def test_engine_determinism(self):
         """Test that running the same backtest setup twice produces identical state."""
-        from src.engine.backtest_engine import BacktestEngine
+        from src.engine.backtest.backtest_engine import BacktestEngine
 
         env1 = EnvironmentFactory.create(config=self.config)
         strat1 = EMAStrategy(fast_period=20, slow_period=50)

@@ -9,14 +9,14 @@ import pandas as pd
 from src.core.clock import HistoricalClock
 from src.core.ids import OrderId, RunId
 from src.core.types import validate_utc_timestamp, PositionSide
-from src.engine.backtest_result import BacktestResult
+from src.engine.backtest.backtest_result import BacktestResult
 from src.engine.exceptions import BacktestError, BacktestExecutionError
-from src.engine.execution_engine import ExecutionEngine
-from src.engine.order import Order, OrderSide, OrderType, OrderStatus
-from src.engine.state import BacktestState
-from src.environment.context import ExecutionContext
-from src.environment.environment import Environment
-from src.environment.portfolio import Portfolio
+from src.engine.execution.execution_engine import ExecutionEngine
+from src.engine.execution.order import Order, OrderSide, OrderType, OrderStatus
+from src.engine.backtest.state import BacktestState
+from src.environment.runtime.context import ExecutionContext
+from src.environment.runtime.environment import Environment
+from src.environment.accounting.portfolio import Portfolio
 from src.strategies.context import StrategyContext
 from src.strategies.signal import SignalAction
 from src.strategies.strategy import Strategy

@@ -8,9 +8,9 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
+from src.environment.runtime.factory import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
-from src.engine.backtest_engine import BacktestEngine
+from src.engine.backtest.backtest_engine import BacktestEngine
 
 
 class TestGoldenFixtures(unittest.TestCase):

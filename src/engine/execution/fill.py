@@ -7,7 +7,7 @@ from datetime import datetime
 
 from src.core.types import validate_utc_timestamp
 from src.engine.exceptions import FillError
-from src.engine.order import OrderSide
+from src.engine.execution.order import OrderSide
 
 
 @dataclass(frozen=True)

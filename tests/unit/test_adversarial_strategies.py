@@ -13,9 +13,9 @@ from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
 from src.core.ids import StrategyId
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
-from src.engine.backtest_engine import BacktestEngine
-from src.environment.position import PositionSide
+from src.environment.runtime.factory import EnvironmentFactory
+from src.engine.backtest.backtest_engine import BacktestEngine
+from src.environment.accounting.position import PositionSide
 
 
 class AlwaysHoldStrategy:

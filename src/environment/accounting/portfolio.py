@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple, List
 
 from src.core.types import PositionSide, validate_utc_timestamp
-from src.engine.fill import Fill
-from src.engine.order import OrderSide
-from src.environment.account import Account
-from src.environment.position import Position
-from src.environment.pnl import calculate_realized_pnl, calculate_unrealized_pnl
-from src.environment.margin import SimpleMarginModel, MarginState
-from src.environment.portfolio_state import PortfolioState
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import OrderSide
+from src.environment.accounting.account import Account
+from src.environment.accounting.position import Position
+from src.environment.accounting.pnl import calculate_realized_pnl, calculate_unrealized_pnl
+from src.environment.accounting.margin import SimpleMarginModel, MarginState
+from src.environment.accounting.portfolio_state import PortfolioState
 from src.environment.exceptions import DuplicateFillError, InvalidPositionError
 
 

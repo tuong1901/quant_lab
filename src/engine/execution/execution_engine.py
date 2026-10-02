@@ -6,11 +6,11 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.core.types import validate_utc_timestamp
-from src.engine.fee import FeeModel, PercentageFeeModel
-from src.engine.fill_model import FillModel, OHLCFillModel
-from src.engine.order import Order, OrderStatus
-from src.engine.result import ExecutionResult
-from src.engine.slippage import SlippageModel, FixedSlippageModel
+from src.engine.models.fee import FeeModel, PercentageFeeModel
+from src.engine.models.fill_model import FillModel, OHLCFillModel
+from src.engine.execution.order import Order, OrderStatus
+from src.engine.execution.result import ExecutionResult
+from src.engine.models.slippage import SlippageModel, FixedSlippageModel
 
 
 class ExecutionEngine:

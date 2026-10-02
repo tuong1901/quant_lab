@@ -4,7 +4,7 @@ Environment domain class encapsulating the runtime composition of dependencies.
 
 from dataclasses import dataclass
 from typing import Any
-from src.environment.registry import Registry
+from src.environment.runtime.registry import Registry
 from src.environment.exceptions import MissingDependencyError, EnvironmentConstructionError
 
 

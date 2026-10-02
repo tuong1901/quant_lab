@@ -7,9 +7,9 @@ from datetime import datetime
 from typing import Tuple
 
 from src.core.types import validate_utc_timestamp
-from src.engine.fill import Fill
-from src.engine.order import Order
-from src.environment.portfolio_state import PortfolioState
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import Order
+from src.environment.accounting.portfolio_state import PortfolioState
 from src.strategies.signal import Signal
 
 

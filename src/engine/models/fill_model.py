@@ -7,8 +7,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.core.ids import FillId
-from src.engine.fill import Fill
-from src.engine.order import Order, OrderSide, OrderType, OrderStatus
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import Order, OrderSide, OrderType, OrderStatus
 
 
 class FillModel(ABC):

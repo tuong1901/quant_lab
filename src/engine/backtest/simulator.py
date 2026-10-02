@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Dual-Fill Execution & Backtest Trade Simulator (`src/engine/simulator.py`).
-[DEPENDENCIES]: numpy, pandas, typing, src.strategies.state_machine, src.strategies.atr_ratchet, src.environment.risk_manager.
+[DEPENDENCIES]: numpy, pandas, typing, src.strategies.state_machine, src.strategies.atr_ratchet, src.environment.accounting.risk_manager.
 """
 
 from typing import List, Dict, Any, Tuple
@@ -9,7 +9,7 @@ import pandas as pd
 
 from src.strategies.state_machine import SetupStateMachine
 from src.strategies.atr_ratchet import ATRRatchetExit
-from src.environment.risk_manager import calculate_risk_position_size
+from src.environment.accounting.risk_manager import calculate_risk_position_size
 
 
 def run_trade_simulation(

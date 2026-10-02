@@ -4,7 +4,7 @@ Margin Model Subsystem (`src/environment/margin.py`).
 
 from dataclasses import dataclass
 from typing import Dict
-from src.environment.position import Position
+from src.environment.accounting.position import Position
 from src.environment.exceptions import PortfolioException
 
 

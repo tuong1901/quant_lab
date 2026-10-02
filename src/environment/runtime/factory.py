@@ -6,11 +6,11 @@ from typing import Optional, Any
 
 from src.core.clock import HistoricalClock
 from src.data.loader import DatasetLoader
-from src.engine.execution_engine import ExecutionEngine
-from src.environment.portfolio import Portfolio
+from src.engine.execution.execution_engine import ExecutionEngine
+from src.environment.accounting.portfolio import Portfolio
 from src.config.models import ExperimentConfig
-from src.environment.environment import Environment
-from src.environment.registry import Registry
+from src.environment.runtime.environment import Environment
+from src.environment.runtime.registry import Registry
 from src.environment.exceptions import EnvironmentConstructionError
 
 
@@ -62,8 +62,8 @@ class EnvironmentFactory:
             maker_rate = getattr(fee_cfg, "maker", 0.0001) if fee_cfg else 0.0001
             taker_rate = getattr(fee_cfg, "taker", 0.0002) if fee_cfg else 0.0002
 
-            from src.engine.fee import PercentageFeeModel
-            from src.engine.slippage import FixedSlippageModel
+            from src.engine.models.fee import PercentageFeeModel
+            from src.engine.models.slippage import FixedSlippageModel
             fee_model = PercentageFeeModel(maker_bps=maker_rate * 10000.0, taker_bps=taker_rate * 10000.0)
 
             slip_cfg = getattr(getattr(config, "execution", None), "slippage", None)

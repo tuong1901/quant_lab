@@ -3,7 +3,7 @@ Slippage Subsystem Models (`src/engine/slippage.py`).
 """
 
 from abc import ABC, abstractmethod
-from src.engine.order import Order, OrderSide
+from src.engine.execution.order import Order, OrderSide
 
 
 class SlippageModel(ABC):

@@ -7,7 +7,7 @@ import ast
 from pathlib import Path
 import unittest
 
-from src.engine.backtest_engine import BacktestEngine
+from src.engine.backtest.backtest_engine import BacktestEngine
 from src.strategies.strategy import Strategy
 
 
@@ -65,8 +65,8 @@ class TestBacktestBoundary(unittest.TestCase):
     def test_backtest_ast_no_portfolio_internal_imports(self):
         """[Backtest Boundary]: Backtest Engine must interact with Portfolio interface, not private account or pnl internals."""
         forbidden_imports = {
-            "src.environment.account",
-            "src.environment.pnl",
+            "src.environment.accounting.account",
+            "src.environment.accounting.pnl",
         }
         violations = []
 

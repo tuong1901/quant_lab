@@ -6,10 +6,10 @@
 import unittest
 from datetime import datetime, timezone
 
-from src.environment.portfolio import Portfolio
-from src.environment.position import PositionSide
-from src.engine.fill import Fill
-from src.engine.order import OrderSide
+from src.environment.accounting.portfolio import Portfolio
+from src.environment.accounting.position import PositionSide
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import OrderSide
 
 
 class TestAccountingInvariants(unittest.TestCase):

@@ -5,8 +5,8 @@ RiskManager Subsystem (`src/environment/risk_manager.py`).
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
-from src.engine.order import Order, OrderSide
-from src.environment.portfolio_state import PortfolioState
+from src.engine.execution.order import Order, OrderSide
+from src.environment.accounting.portfolio_state import PortfolioState
 
 
 class RiskDecisionResult(Enum):

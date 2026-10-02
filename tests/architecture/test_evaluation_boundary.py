@@ -8,8 +8,8 @@ from pathlib import Path
 import unittest
 
 from src.evaluation.metrics import BasicMetrics, calculate_basic_metrics
-from src.engine.backtest_result import BacktestResult
-from src.environment.portfolio_state import PortfolioState
+from src.engine.backtest.backtest_result import BacktestResult
+from src.environment.accounting.portfolio_state import PortfolioState
 from datetime import datetime, timezone
 
 
