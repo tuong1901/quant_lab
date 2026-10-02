@@ -29,6 +29,10 @@ class Portfolio:
         self.last_update_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
         self.mark_prices: Dict[str, float] = {}
 
+    @property
+    def initial_capital(self) -> float:
+        return self.account.initial_capital
+
     def apply_fill(self, fill: Fill) -> PortfolioState:
         """[PURPOSE]: Process fill across 5 position lifecycle stages."""
         if fill.fill_id in self.processed_fill_ids:
@@ -91,23 +95,35 @@ class Portfolio:
         self.account = self.account.with_fill(realized_pnl_delta=realized_pnl, fee=fill.fee)
         return self.get_state(timestamp=fill.timestamp)
 
-    def mark_to_market(self, timestamp: datetime, mark_prices: Dict[str, float]) -> PortfolioState:
+    def mark_to_market(
+        self,
+        timestamp: Optional[datetime] = None,
+        mark_prices: Optional[Dict[str, float]] = None,
+        symbol: Optional[str] = None,
+        mark_price: Optional[float] = None,
+    ) -> PortfolioState:
         """[PURPOSE]: Update mark-to-market prices and unrealized PnL."""
-        validate_utc_timestamp(timestamp)
-        self.last_update_time = timestamp
-        self.mark_prices.update(mark_prices)
+        if symbol is not None and mark_price is not None:
+            mp_dict = {symbol: mark_price}
+        else:
+            mp_dict = mark_prices or {}
+
+        ts = timestamp if timestamp is not None else self.last_update_time
+        validate_utc_timestamp(ts)
+        self.last_update_time = ts
+        self.mark_prices.update(mp_dict)
 
         updated_positions = {}
         for sym, pos in self.positions.items():
-            if sym in mark_prices:
-                mp = mark_prices[sym]
+            if sym in self.mark_prices:
+                mp = self.mark_prices[sym]
                 unrealized = calculate_unrealized_pnl(pos.side, pos.average_entry_price, mp, pos.quantity)
                 updated_positions[sym] = pos.with_unrealized_pnl(unrealized)
             else:
                 updated_positions[sym] = pos
 
         self.positions = updated_positions
-        return self.get_state(timestamp=timestamp)
+        return self.get_state(timestamp=ts)
 
     def get_state(self, timestamp: Optional[datetime] = None) -> PortfolioState:
         """[PURPOSE]: Generate immutable PortfolioState snapshot."""

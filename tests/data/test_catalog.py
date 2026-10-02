@@ -5,11 +5,11 @@ Unit tests for DatasetCatalog registry (`src/market_data/catalog.py`).
 import unittest
 from datetime import datetime, timezone
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import DataRange, StorageReference, Dataset
-from src.market_data.catalog import DatasetCatalog
-from src.market_data.exceptions import DatasetNotFoundError, DuplicateDatasetError, CatalogError
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import DataRange, StorageReference, Dataset
+from src.data.catalog import DatasetCatalog
+from src.data.exceptions import DatasetNotFoundError, DuplicateDatasetError, CatalogError
 
 
 class TestCatalog(unittest.TestCase):

@@ -7,7 +7,7 @@
 5. State Isolation & Determinism (7 Mutations)
 6. Config & Spec Drift (5 Mutations)
 
-[DEPENDENCIES]: unittest, datetime, pandas, src.execution, src.portfolio, src.backtest, src.config, src.core.
+[DEPENDENCIES]: unittest, datetime, pandas, src.engine, src.environment, src.engine, src.config, src.core.
 """
 
 import unittest
@@ -18,13 +18,13 @@ import pandas as pd
 from src.core.ids import EventId, StrategyId, OrderId, FillId
 from src.core.clock import HistoricalClock
 from src.core.exceptions import QuantSystemError
-from src.market_data.loader import DatasetLoader
-from src.market_data.exceptions import DataValidationError
-from src.execution.fill import Fill
-from src.execution.order import OrderSide, Order, OrderType, OrderStatus
-from src.portfolio.portfolio import Portfolio
-from src.portfolio.position import PositionSide
-from src.portfolio.pnl import calculate_realized_pnl, calculate_unrealized_pnl
+from src.data.loader import DatasetLoader
+from src.data.exceptions import DataValidationError
+from src.engine.fill import Fill
+from src.engine.order import OrderSide, Order, OrderType, OrderStatus
+from src.environment.portfolio import Portfolio
+from src.environment.position import PositionSide
+from src.environment.pnl import calculate_realized_pnl, calculate_unrealized_pnl
 from src.strategies.context import StrategyContext
 from src.config.models import ExecutionConfig, PortfolioConfig
 from src.config.exceptions import ConfigValidationError
@@ -198,7 +198,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
         fill = Fill("f1", "o1", "BTCUSDT", OrderSide.BUY, 1.0, 50000.0, timestamp=self.now, fee=10.0)
         portfolio.apply_fill(fill)
 
-        p_state = portfolio.mark_to_market("BTCUSDT", 55000.0, self.now)
+        p_state = portfolio.mark_to_market(self.now, {"BTCUSDT": 55000.0})
         mutated_equity = p_state.balance  # Fault: Omits $5,000 unrealized PnL
         with self.assertRaises(AssertionError):
             self.assertEqual(p_state.equity, mutated_equity, "M-PORT-02 SURVIVED: Omitted unrealized PnL was not detected!")
@@ -232,18 +232,18 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
 
     def test_m_port_06_duplicate_fill_double_debits_cash_detected(self):
         """[M-PORT-06]: Duplicate fill application double-debiting cash MUST fail duplicate fill filter."""
+        from src.environment.exceptions import DuplicateFillError
         portfolio = Portfolio(initial_capital=10000.0)
         fill = Fill("f1", "o1", "BTCUSDT", OrderSide.BUY, 1.0, 50000.0, timestamp=self.now, fee=10.0)
         portfolio.apply_fill(fill)
-        portfolio.apply_fill(fill)  # Apply second time
-
-        self.assertEqual(portfolio.account.fees_paid, 10.0, "M-PORT-06 SURVIVED: Duplicate fill double-debited cash!")
+        with self.assertRaises(DuplicateFillError):
+            portfolio.apply_fill(fill)  # Apply second time MUST raise DuplicateFillError
 
     def test_m_port_07_negative_position_quantity_allowed_detected(self):
         """[M-PORT-07]: Position quantity dropping below 0 MUST be rejected by Position post-init validation."""
         with self.assertRaises((ValueError, QuantSystemError, Exception)):
             # Position quantity must be > 0
-            from src.portfolio.position import Position
+            from src.environment.position import Position
             Position(symbol="BTCUSDT", side=PositionSide.LONG, quantity=-1.0, entry_price=50000.0, timestamp=self.now)
 
     def test_m_port_08_short_pnl_using_long_formula_detected(self):
@@ -284,7 +284,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
     def test_m_arch_02_strategy_imports_execution_engine_detected(self):
         """[M-ARCH-02]: Strategy file referencing ExecutionEngine MUST fail strategy AST boundary check."""
         import ast
-        source = "from src.execution.execution_engine import ExecutionEngine"
+        source = "from src.engine.execution_engine import ExecutionEngine"
         tree = ast.parse(source)
         found_forbidden = False
         for node in ast.walk(tree):
@@ -314,9 +314,9 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
     def test_m_arch_05_portfolio_imports_backtest_engine_detected(self):
         """[M-ARCH-05]: Portfolio module importing BacktestEngine MUST fail AST boundary check."""
         import ast
-        source = "from src.backtest.engine import BacktestEngine"
+        source = "from src.engine.backtest_engine import BacktestEngine"
         tree = ast.parse(source)
-        found = any(isinstance(n, ast.ImportFrom) and "backtest" in str(n.module) for n in ast.walk(tree))
+        found = any(isinstance(n, ast.ImportFrom) and ("engine" in str(n.module) or "backtest" in str(n.module)) for n in ast.walk(tree))
         self.assertTrue(found, "M-ARCH-05: BacktestEngine import detection failed!")
 
     def test_m_arch_06_environment_imports_evaluation_metrics_detected(self):
@@ -414,7 +414,7 @@ class TestRedteamMutationsCampaignV2(unittest.TestCase):
 
     def test_m_cfg_03_invalid_timeframe_string_accepted_detected(self):
         """[M-CFG-03]: Config loader accepting invalid timeframe string MUST fail timeframe parsing."""
-        from src.market_data.timeframe import Timeframe
+        from src.data.timeframe import Timeframe
         with self.assertRaises((ValueError, QuantSystemError, Exception)):
             Timeframe.from_string("173xyz")
 

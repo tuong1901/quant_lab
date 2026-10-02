@@ -1,11 +1,11 @@
 """
 [PURPOSE]: Unit tests for SlippageModel and FeeModel implementations.
-[DEPENDENCIES]: unittest, datetime, src.execution.
+[DEPENDENCIES]: unittest, datetime, src.engine.
 """
 
 import unittest
 from datetime import datetime, timezone
-from src.execution import (
+from src.engine import (
     Order,
     OrderSide,
     OrderType,

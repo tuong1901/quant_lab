@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Integrity unit tests covering execution timing, same-bar lookahead proof, clock monotonicity, boundary execution windows, HOLD-only sanity, alternating signals, and determinism.
-[DEPENDENCIES]: unittest, pandas, datetime, src.backtest, src.strategies, src.environment, src.execution.
+[DEPENDENCIES]: unittest, pandas, datetime, src.engine, src.strategies, src.environment, src.engine.
 """
 
 import unittest
@@ -15,7 +15,7 @@ from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
 from src.experiments.window import TimeWindow
 from src.experiments.run import ExperimentRun
-from src.backtest.engine import BacktestEngine
+from src.engine.backtest_engine import BacktestEngine
 from src.evaluation.metrics import calculate_basic_metrics
 
 

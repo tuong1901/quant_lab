@@ -58,7 +58,22 @@ class EnvironmentFactory:
             market_data = DatasetLoader()
 
         if execution_engine is None:
-            execution_engine = ExecutionEngine()
+            fee_cfg = getattr(getattr(config, "execution", None), "fee", None)
+            maker_rate = getattr(fee_cfg, "maker", 0.0001) if fee_cfg else 0.0001
+            taker_rate = getattr(fee_cfg, "taker", 0.0002) if fee_cfg else 0.0002
+
+            from src.engine.fee import PercentageFeeModel
+            from src.engine.slippage import FixedSlippageModel
+            fee_model = PercentageFeeModel(maker_bps=maker_rate * 10000.0, taker_bps=taker_rate * 10000.0)
+
+            slip_cfg = getattr(getattr(config, "execution", None), "slippage", None)
+            slip_val = getattr(slip_cfg, "value", 0.0002) if slip_cfg else 0.0002
+            slippage_model = FixedSlippageModel(slippage_bps=slip_val * 10000.0)
+
+            execution_engine = ExecutionEngine(
+                slippage_model=slippage_model,
+                fee_model=fee_model,
+            )
 
         if portfolio is None:
             initial_cap = 10000.0

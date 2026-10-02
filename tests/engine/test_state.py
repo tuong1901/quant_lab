@@ -15,7 +15,7 @@ class TestBacktestState(unittest.TestCase):
 
     def test_state_initialization(self):
         """Test creating empty BacktestState container and adding records."""
-        from src.backtest.state import BacktestState
+        from src.engine.state import BacktestState
 
         state = BacktestState()
         self.assertEqual(state.bars_processed, 0)

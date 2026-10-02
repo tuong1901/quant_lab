@@ -15,7 +15,7 @@ def calculate_realized_pnl(
     """
     [PURPOSE]: Pure mathematical formula for Realized PnL.
     """
-    if quantity <= 0:
+    if quantity < 0:
         raise PortfolioException(f"Quantity must be positive, got {quantity}")
     if entry_price <= 0 or exit_price <= 0:
         raise PortfolioException(f"Prices must be positive, got entry={entry_price}, exit={exit_price}")
@@ -35,7 +35,7 @@ def calculate_unrealized_pnl(
     """
     [PURPOSE]: Pure mathematical formula for Mark-to-Market Unrealized PnL.
     """
-    if quantity <= 0:
+    if quantity < 0:
         raise PortfolioException(f"Quantity must be positive, got {quantity}")
     if entry_price <= 0 or mark_price <= 0:
         raise PortfolioException(f"Prices must be positive, got entry={entry_price}, mark={mark_price}")

@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Adversarial strategy test suite verifying environment robustness across edge-case strategies (Hold, Long, Short, Alternating, Stateful, Malicious).
-[DEPENDENCIES]: unittest, pandas, datetime, src.strategies, src.backtest, src.environment, src.config.
+[DEPENDENCIES]: unittest, pandas, datetime, src.strategies, src.engine, src.environment, src.config.
 """
 
 import unittest
@@ -14,8 +14,8 @@ from src.strategies.signal import Signal, SignalAction
 from src.core.ids import StrategyId
 from src.config.loader import ConfigLoader
 from src.environment.factory import EnvironmentFactory
-from src.backtest.engine import BacktestEngine
-from src.portfolio.position import PositionSide
+from src.engine.backtest_engine import BacktestEngine
+from src.environment.position import PositionSide
 
 
 class AlwaysHoldStrategy:

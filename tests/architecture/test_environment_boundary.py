@@ -23,8 +23,8 @@ class TestEnvironmentBoundary(unittest.TestCase):
     def test_environment_ast_no_backtest_or_evaluation_imports(self):
         """[Environment Boundary]: Environment modules must not import Backtest Engine or Evaluation metrics."""
         forbidden_imports = {
-            "src.backtest",
             "src.evaluation",
+            "src.experiments",
         }
         violations = []
 

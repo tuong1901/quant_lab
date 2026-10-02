@@ -1,12 +1,12 @@
 """
 [PURPOSE]: Unit tests for Portfolio integration end-to-end (apply_fill, mark_to_market, duplicate fill protection, multi-symbol, determinism).
-[DEPENDENCIES]: unittest, datetime, src.execution, src.portfolio.
+[DEPENDENCIES]: unittest, datetime, src.engine, src.environment.
 """
 
 import unittest
 from datetime import datetime, timezone
-from src.execution import Fill, OrderSide
-from src.portfolio import Portfolio, PositionSide
+from src.engine import Fill, OrderSide
+from src.environment import Portfolio, PositionSide
 
 class TestPortfolioIntegration(unittest.TestCase):
     def test_portfolio_end_to_end_example(self):

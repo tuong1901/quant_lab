@@ -8,12 +8,12 @@ import unittest
 import pandas as pd
 from datetime import datetime, timezone
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import DataRange, StorageReference, Dataset
-from src.market_data.loader import DatasetLoader
-from src.market_data.versioning import calculate_content_hash
-from src.market_data.exceptions import DataValidationError
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import DataRange, StorageReference, Dataset
+from src.data.loader import DatasetLoader
+from src.data.versioning import calculate_content_hash
+from src.data.exceptions import DataValidationError
 
 
 class TestLoaderValidation(unittest.TestCase):

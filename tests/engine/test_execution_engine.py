@@ -1,11 +1,11 @@
 """
 [PURPOSE]: Unit tests for ExecutionEngine orchestration, partial fills, event audit log, and 100% determinism.
-[DEPENDENCIES]: unittest, datetime, src.execution.
+[DEPENDENCIES]: unittest, datetime, src.engine.
 """
 
 import unittest
 from datetime import datetime, timezone
-from src.execution import (
+from src.engine import (
     Order,
     OrderSide,
     OrderType,

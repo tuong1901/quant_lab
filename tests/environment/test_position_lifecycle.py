@@ -1,12 +1,12 @@
 """
 [PURPOSE]: Unit tests for 5 Position lifecycle transitions (Open, Increase, Reduce, Close, Reversal).
-[DEPENDENCIES]: unittest, datetime, src.execution, src.portfolio.
+[DEPENDENCIES]: unittest, datetime, src.engine, src.environment.
 """
 
 import unittest
 from datetime import datetime, timezone
-from src.execution import Fill, OrderSide
-from src.portfolio import Portfolio, Position, PositionSide, InvalidPositionError
+from src.engine import Fill, OrderSide
+from src.environment import Portfolio, Position, PositionSide, InvalidPositionError
 
 class TestPositionLifecycle(unittest.TestCase):
     def test_open_and_increase_position_weighted_average(self):

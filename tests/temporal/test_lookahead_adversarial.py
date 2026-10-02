@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Adversarial temporal look-ahead tests injecting future price shocks to verify 100% decision causality.
-[DEPENDENCIES]: unittest, pandas, datetime, src.backtest, src.strategies, src.environment, src.config.
+[DEPENDENCIES]: unittest, pandas, datetime, src.engine, src.strategies, src.environment, src.config.
 """
 
 import unittest
@@ -10,7 +10,7 @@ import pandas as pd
 from src.config.loader import ConfigLoader
 from src.environment.factory import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
-from src.backtest.engine import BacktestEngine
+from src.engine.backtest_engine import BacktestEngine
 
 
 class TestLookaheadAdversarial(unittest.TestCase):

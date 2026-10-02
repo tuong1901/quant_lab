@@ -1,10 +1,10 @@
 """
 [PURPOSE]: Unit tests for Account and PnL mathematical formulas.
-[DEPENDENCIES]: unittest, src.portfolio.
+[DEPENDENCIES]: unittest, src.environment.
 """
 
 import unittest
-from src.portfolio import (
+from src.environment import (
     Account,
     PositionSide,
     calculate_unrealized_pnl,

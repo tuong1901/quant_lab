@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Architecture Contract Integration Test proving end-to-end domain connection (Market Data -> Strategy -> Signal -> Backtest -> Order -> Execution -> Fill -> Portfolio -> BacktestResult -> Evaluation -> BasicMetrics).
-[DEPENDENCIES]: unittest, pandas, datetime, src.config, src.environment, src.strategies, src.backtest, src.evaluation.
+[DEPENDENCIES]: unittest, pandas, datetime, src.config, src.environment, src.strategies, src.engine, src.evaluation.
 """
 
 import unittest
@@ -11,11 +11,11 @@ from src.config.loader import ConfigLoader
 from src.environment.factory import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
 from src.strategies.signal import Signal
-from src.execution.order import Order
-from src.execution.fill import Fill
-from src.portfolio.portfolio_state import PortfolioState
-from src.backtest.engine import BacktestEngine
-from src.backtest.result import BacktestResult
+from src.engine.order import Order
+from src.engine.fill import Fill
+from src.environment.portfolio_state import PortfolioState
+from src.engine.backtest_engine import BacktestEngine
+from src.engine.backtest_result import BacktestResult
 from src.evaluation.metrics import BasicMetrics, calculate_basic_metrics
 
 

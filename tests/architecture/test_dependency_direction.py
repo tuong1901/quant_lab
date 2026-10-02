@@ -11,33 +11,27 @@ import unittest
 
 ALLOWED_DEPENDENCIES = {
     "src.core": ["src.core"],
-    "src.market_data": ["src.core", "src.market_data"],
-    "src.features": ["src.core", "src.market_data", "src.features"],
+    "src.data": ["src.core", "src.data"],
+    "src.config": ["src.core", "src.config", "src.data"],
+    "src.features": ["src.core", "src.data", "src.features"],
     "src.strategies": ["src.core", "src.strategies"],
-    "src.execution": ["src.core", "src.execution"],
-    "src.portfolio": ["src.core", "src.execution", "src.portfolio"],
     "src.environment": [
         "src.core",
         "src.config",
-        "src.market_data",
-        "src.execution",
-        "src.portfolio",
+        "src.data",
         "src.environment",
+        "src.engine",
     ],
-    "src.experiments": ["src.core", "src.experiments"],
-    "src.backtest": [
+    "src.engine": [
         "src.core",
         "src.config",
-        "src.market_data",
-        "src.execution",
-        "src.portfolio",
+        "src.data",
         "src.environment",
         "src.strategies",
-        "src.experiments",
-        "src.backtest",
+        "src.engine",
     ],
-    "src.evaluation": ["src.core", "src.backtest", "src.evaluation"],
-    "src.config": ["src.core", "src.config", "src.market_data"],
+    "src.experiments": ["src.core", "src.experiments"],
+    "src.evaluation": ["src.core", "src.engine", "src.evaluation"],
 }
 
 

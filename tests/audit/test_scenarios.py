@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Synthetic scenario unit tests (Scenarios A through F) for forensic backtest integrity audit.
-[DEPENDENCIES]: unittest, pandas, datetime, src.backtest, src.strategies, src.environment, src.evaluation.
+[DEPENDENCIES]: unittest, pandas, datetime, src.engine, src.strategies, src.environment, src.evaluation.
 """
 
 import unittest
@@ -12,9 +12,9 @@ from src.environment.factory import EnvironmentFactory
 from src.strategies.strategy import Strategy
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
-from src.backtest.engine import BacktestEngine
+from src.engine.backtest_engine import BacktestEngine
 from src.evaluation.metrics import calculate_basic_metrics
-from src.portfolio.position import PositionSide
+from src.environment.position import PositionSide
 
 
 class ScriptedStrategy(Strategy):

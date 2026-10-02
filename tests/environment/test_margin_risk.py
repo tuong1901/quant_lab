@@ -1,12 +1,12 @@
 """
 [PURPOSE]: Unit tests for Margin accounting and RiskManager pre-execution validation.
-[DEPENDENCIES]: unittest, datetime, src.execution, src.portfolio.
+[DEPENDENCIES]: unittest, datetime, src.engine, src.environment.
 """
 
 import unittest
 from datetime import datetime, timezone
-from src.execution import Order, OrderSide, OrderType
-from src.portfolio import (
+from src.engine import Order, OrderSide, OrderType
+from src.environment import (
     Portfolio,
     SimpleMarginModel,
     RiskManager,

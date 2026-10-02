@@ -5,11 +5,11 @@ Unit tests for Dataset compatibility validation (`src/market_data/compatibility.
 import unittest
 from datetime import datetime, timezone
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import DataRange, StorageReference, Dataset
-from src.market_data.compatibility import validate_compatible_datasets
-from src.market_data.exceptions import IncompatibleDatasetError
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import DataRange, StorageReference, Dataset
+from src.data.compatibility import validate_compatible_datasets
+from src.data.exceptions import IncompatibleDatasetError
 
 
 class TestCompatibility(unittest.TestCase):

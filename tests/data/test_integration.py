@@ -8,7 +8,7 @@ import unittest
 import pandas as pd
 from datetime import datetime, timezone
 
-from src.market_data import (
+from src.data import (
     Market,
     Timeframe,
     DataRange,

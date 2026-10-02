@@ -4,8 +4,8 @@ Unit tests for Market domain model (`src/market_data/market.py`).
 
 import unittest
 
-from src.market_data.market import Market
-from src.market_data.exceptions import InvalidMarketError
+from src.data.market import Market
+from src.data.exceptions import InvalidMarketError
 
 
 class TestMarket(unittest.TestCase):

@@ -43,3 +43,8 @@ class Timeframe(Enum):
             if tf.value == clean or tf.name.lower() == clean:
                 return tf
         raise DataValidationError(f"Unknown timeframe string: '{val}'")
+
+    @classmethod
+    def parse(cls, val: str) -> "Timeframe":
+        """[RETURNS]: Alias for from_string."""
+        return cls.from_string(val)

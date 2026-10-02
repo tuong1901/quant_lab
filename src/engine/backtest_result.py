@@ -32,3 +32,15 @@ class BacktestResult:
 
     def __post_init__(self) -> None:
         validate_utc_timestamp(self.final_timestamp)
+
+    @property
+    def final_equity(self) -> float:
+        return self.final_portfolio.equity
+
+    @property
+    def realized_pnl(self) -> float:
+        return self.final_portfolio.realized_pnl
+
+    @property
+    def total_fees(self) -> float:
+        return self.final_portfolio.fees_paid

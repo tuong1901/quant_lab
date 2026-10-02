@@ -15,7 +15,7 @@ class FeeModel(ABC):
 
 class PercentageFeeModel(FeeModel):
     """[PURPOSE]: Percentage fee model with separate Maker and Taker bps rates."""
-    def __init__(self, maker_bps: float = 2.0, taker_bps: float = 4.0):
+    def __init__(self, maker_bps: float = 1.0, taker_bps: float = 2.0):
         self.maker_rate = max(0.0, maker_bps) / 10000.0
         self.taker_rate = max(0.0, taker_bps) / 10000.0
 

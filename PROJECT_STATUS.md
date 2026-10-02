@@ -138,13 +138,14 @@
 - Xây dựng **Cẩm Nang Chi Tiết Logic Hoạt Động & Kịch Bản Test Case Từng File (`module_catalog_deep_dive.md`)**:
   * Liệt kê và phân tích toàn bộ 8 phân hệ trong `src/` qua 4 góc nhìn: Ngôn ngữ Kinh doanh/Đời thực, Thông số Kỹ thuật Chi tiết (Hàm, inputs, outputs, side effects), Mối quan hệ giữa các Folder, và Kịch bản Viết Unit Test gợi ý giúp người dùng tự gõ testcase cho từng file.
 
-- Thực hiện thành công bài task Hợp nhất & Chuẩn hóa Kiến trúc Tinh gọn 5 Khối theo [REQ-20261001-architecture-reorganization.md](file:///d:/reverse_indi/docs/requirements/REQ-20261001-architecture-reorganization.md):
-  * **Xóa 100% Legacy Flat Files**: Xóa sạch 10 file flat (`src/quant_lab/*.py` & `src/trend_engine.py`). Mã nguồn hiện tại tập trung 100% tại Single Source of Truth (`src/<subpackage>/`).
-  * **Khắc phục `VIOLATION-01`**: Di chuyển Enum `PositionSide` về `src/core/types.py`. Bộ kiểm thử tĩnh `test_dependency_direction.py` đạt **PASS 100%**.
-  * **Khóa Cứng Core Boundary**: Bảo đảm tính bất biến của Core các phân hệ qua `test_dag_guard.py` và `test_evaluation_boundary.py`.
+- Thực hiện thành công bài task Hợp nhất & Chuẩn hóa Kiến trúc Tinh gọn 6 Khối Physical Domain theo [REQ-20261001-architecture-reorganization.md](file:///d:/reverse_indi/docs/requirements/REQ-20261001-architecture-reorganization.md):
+  * **Hợp nhất 6 Physical Domain Folders**: Tinh gọn thư mục `src/` và `tests/` thành 6 Domain Folders chuẩn (`data`, `environment`, `features`, `strategies`, `engine`, `evaluation`) cùng `core`, `config`, `experiments`. Xóa bỏ hoàn toàn các folder rỗng (`batch`, `generator`, `evolution`, `paper`, `market_data`, `portfolio`, `execution`, `backtest`).
+  * **Xóa 100% Legacy Flat Files**: Xóa sạch các file flat cũ. Mã nguồn hiện tại tập trung 100% tại Single Source of Truth (`src/<domain>/`).
+  * **Khắc phục `VIOLATION-01`**: Di chuyển Enum `PositionSide` về `src/core/types.py`. Bộ kiểm thử tĩnh DAG layer `test_dependency_direction.py` đạt **PASS 100%**.
+  * **Toàn bộ Unit Test Suite PASS 100%**: Tất cả **115/115 unit tests** trong thư mục `tests/` chạy thành công **100% OK**.
   * **Golden Behavioral Baseline Verification**: Chạy kiểm tra so sánh với snapshot `golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH** (103/103 trades khớp chính xác tuyệt đối từng số thập phân, Final Equity = $11,812.54).
-  * **Chuẩn hóa CLI Entrypoint**: Dọn dẹp runner duy nhất [run_backtest.py](file:///d:/reverse_indi/run_backtest.py) thay thế cho `run_pipeline.py`.
-  * Lập báo cáo nghiệm thu kiến trúc chi tiết tại [docs/architecture_certification_report.md](file:///d:/reverse_indi/docs/architecture_certification_report.md).
+  * **Pine Script Reconstruction Verification**: Chạy `scripts/validate_reconstruction.py` xác minh độ chính xác 99.9884%.
+  * Lập báo cáo nghiệm thu kiến trúc chi tiết tại [docs/architecture_certification_report.md](file:///d:/reverse_indi/docs/architecture_certification_report.md) và audit simplification tại [docs/architecture_simplification_audit.md](file:///d:/reverse_indi/docs/architecture_simplification_audit.md).
 
 ## What's next
 - Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.

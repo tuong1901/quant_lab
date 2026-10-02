@@ -6,8 +6,8 @@ import unittest
 import pandas as pd
 from datetime import datetime, timezone
 
-from src.market_data.versioning import calculate_content_hash, verify_dataset_hash
-from src.market_data.exceptions import DataValidationError
+from src.data.versioning import calculate_content_hash, verify_dataset_hash
+from src.data.exceptions import DataValidationError
 
 
 class TestVersioningHash(unittest.TestCase):

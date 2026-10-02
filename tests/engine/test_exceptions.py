@@ -14,7 +14,7 @@ class TestBacktestExceptions(unittest.TestCase):
 
     def test_backtest_error_hierarchy(self):
         """Test that BacktestError inherits from QuantSystemError and custom exceptions inherit from BacktestError."""
-        from src.backtest.exceptions import (
+        from src.engine.exceptions import (
             BacktestError,
             BacktestExecutionError,
             InvalidSimulationStateError,

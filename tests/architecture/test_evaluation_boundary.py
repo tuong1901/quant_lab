@@ -8,8 +8,8 @@ from pathlib import Path
 import unittest
 
 from src.evaluation.metrics import BasicMetrics, calculate_basic_metrics
-from src.backtest.result import BacktestResult
-from src.portfolio.portfolio_state import PortfolioState
+from src.engine.backtest_result import BacktestResult
+from src.environment.portfolio_state import PortfolioState
 from datetime import datetime, timezone
 
 
@@ -23,13 +23,11 @@ class TestEvaluationBoundary(unittest.TestCase):
         self.evaluation_dir = self.project_root / "src" / "evaluation"
 
     def test_evaluation_ast_no_runtime_imports(self):
-        """[Evaluation Boundary]: Evaluation modules must not import Portfolio, Execution, Environment, or Strategy runtime modules."""
+        """[Evaluation Boundary]: Evaluation modules must not import Portfolio, Environment, or Strategy runtime modules."""
         forbidden_imports = {
-            "src.portfolio",
-            "src.execution",
             "src.environment",
             "src.strategies",
-            "src.market_data",
+            "src.data",
         }
         violations = []
 

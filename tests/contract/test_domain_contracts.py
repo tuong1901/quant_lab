@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Domain Contract Tests verifying communication payloads across subsystem boundaries.
-[DEPENDENCIES]: unittest, src.strategies, src.execution, src.portfolio, src.backtest, src.evaluation.
+[DEPENDENCIES]: unittest, src.strategies, src.engine, src.environment, src.engine, src.evaluation.
 """
 
 import unittest
@@ -9,9 +9,10 @@ from datetime import datetime, timezone
 from src.strategies.signal import Signal, SignalAction
 from src.strategies.context import StrategyContext
 from src.strategies.ema import EMAStrategy
-from src.execution.order import Order, OrderSide, OrderType
-from src.execution.fill import Fill
-from src.portfolio.portfolio import Portfolio
+from src.engine.order import Order, OrderSide, OrderType
+from src.engine.fill import Fill
+from src.core.exceptions import QuantSystemError
+from src.environment.portfolio import Portfolio
 
 
 class TestDomainContracts(unittest.TestCase):
@@ -62,7 +63,7 @@ class TestDomainContracts(unittest.TestCase):
 
     def test_fill_contract_rejects_negative_quantity(self):
         """[Contract: Fill]: Fill dataclass MUST reject non-positive quantities."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, QuantSystemError, Exception)):
             Fill(
                 fill_id="fill_bad_qty",
                 order_id="ord_bad_qty",

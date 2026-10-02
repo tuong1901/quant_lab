@@ -5,7 +5,7 @@ Unit tests for Strategy Protocol contract and isolation constraints (`src/strate
 import unittest
 from datetime import datetime, timezone
 
-from src.portfolio.position import PositionSide
+from src.environment.position import PositionSide
 
 
 class TestStrategyContract(unittest.TestCase):

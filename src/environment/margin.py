@@ -47,3 +47,7 @@ class SimpleMarginModel:
             used_margin=used_margin,
             available_margin=available_margin,
         )
+
+    def calculate_initial_margin(self, position_notional: float, leverage: Optional[float] = None) -> float:
+        lev = leverage if leverage is not None else self.leverage
+        return position_notional / lev

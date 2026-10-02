@@ -5,10 +5,10 @@ Unit tests for Dataset and DataRange models (`src/market_data/dataset.py`).
 import unittest
 from datetime import datetime, timezone
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import DataRange, StorageReference, Dataset
-from src.market_data.exceptions import InvalidDatasetError
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import DataRange, StorageReference, Dataset
+from src.data.exceptions import InvalidDatasetError
 
 
 class TestDatasetModels(unittest.TestCase):
