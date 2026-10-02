@@ -1,16 +1,16 @@
 """
 [PURPOSE]: Execution Boundary Guard tests ensuring Execution subsystem handles fills, slippage, and fees without calling Strategy or mutating Portfolio.
-[DEPENDENCIES]: unittest, ast, pathlib, src.execution.
+[DEPENDENCIES]: unittest, ast, pathlib, src.engine.
 """
 
 import ast
 from pathlib import Path
 import unittest
 
-from src.execution.execution_engine import ExecutionEngine
-from src.execution.order import Order, OrderSide, OrderType, OrderStatus
-from src.execution.fill import Fill
-from src.execution.result import ExecutionResult
+from src.engine.execution.execution_engine import ExecutionEngine
+from src.engine.execution.order import Order, OrderSide, OrderType, OrderStatus
+from src.engine.execution.fill import Fill
+from src.engine.execution.result import ExecutionResult
 from datetime import datetime, timezone
 
 
@@ -28,8 +28,8 @@ class TestExecutionBoundary(unittest.TestCase):
         """[Execution Boundary]: Execution modules must not import Strategy, Portfolio, or Backtest Engine."""
         forbidden_imports = {
             "src.strategies",
-            "src.portfolio",
-            "src.backtest",
+            "src.environment",
+            "src.engine",
         }
         violations = []
 

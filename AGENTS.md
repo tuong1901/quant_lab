@@ -44,3 +44,4 @@ The agent is ONLY allowed to freely read/edit:
 - Its own log/status files it creates for debugging (e.g. debug_log.md, fix_notes.md)
 
 The agent is NEVER allowed to read, open, parse, or edit any other file type (.txt, .csv, .json data files, .xlsx, .pdf, images, or any file containing data) WITHOUT explicitly asking for permission first — EVERY SINGLE TIME, no exceptions.
+    

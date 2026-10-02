@@ -21,8 +21,8 @@ class TestEnvironment(unittest.TestCase):
 
     def test_environment_immutability(self):
         """Test that Environment dataclass attributes cannot be mutated after creation."""
-        from src.environment.registry import Registry
-        from src.environment.environment import Environment
+        from src.environment.runtime.registry import Registry
+        from src.environment.runtime.environment import Environment
 
         dummy_md = {"symbol": "BTCUSDT"}
         dummy_exec = {"engine": "mock"}
@@ -46,8 +46,8 @@ class TestEnvironment(unittest.TestCase):
 
     def test_missing_clock_raises_error(self):
         """Test that missing clock component raises MissingDependencyError."""
-        from src.environment.registry import Registry
-        from src.environment.environment import Environment
+        from src.environment.runtime.registry import Registry
+        from src.environment.runtime.environment import Environment
         from src.environment.exceptions import MissingDependencyError
 
         reg = Registry()

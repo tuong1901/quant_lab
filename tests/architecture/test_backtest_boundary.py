@@ -1,13 +1,13 @@
 """
 [PURPOSE]: Backtest Boundary Guard tests ensuring BacktestEngine relies strictly on Strategy Protocol abstractions without hardcoding specific strategy implementations.
-[DEPENDENCIES]: unittest, ast, pathlib, src.backtest.
+[DEPENDENCIES]: unittest, ast, pathlib, src.engine.
 """
 
 import ast
 from pathlib import Path
 import unittest
 
-from src.backtest.engine import BacktestEngine
+from src.engine.backtest.backtest_engine import BacktestEngine
 from src.strategies.strategy import Strategy
 
 
@@ -65,8 +65,8 @@ class TestBacktestBoundary(unittest.TestCase):
     def test_backtest_ast_no_portfolio_internal_imports(self):
         """[Backtest Boundary]: Backtest Engine must interact with Portfolio interface, not private account or pnl internals."""
         forbidden_imports = {
-            "src.portfolio.account",
-            "src.portfolio.pnl",
+            "src.environment.accounting.account",
+            "src.environment.accounting.pnl",
         }
         violations = []
 

@@ -1,16 +1,16 @@
 """
 [PURPOSE]: Adversarial Mutation Tests verifying that test assertions catch corrupted execution and accounting logic.
-[DEPENDENCIES]: unittest, src.execution, src.portfolio.
+[DEPENDENCIES]: unittest, src.engine, src.environment.
 """
 
 import unittest
 from datetime import datetime, timezone
 
-from src.execution.fill import Fill
-from src.execution.order import OrderSide
-from src.portfolio.portfolio import Portfolio
-from src.portfolio.pnl import calculate_realized_pnl
-from src.portfolio.position import PositionSide
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import OrderSide
+from src.environment.accounting.portfolio import Portfolio
+from src.environment.accounting.pnl import calculate_realized_pnl
+from src.environment.accounting.position import PositionSide
 
 
 class TestAdversarialMutations(unittest.TestCase):

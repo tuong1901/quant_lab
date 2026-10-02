@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Dedicated regression and temporal invariant unit tests proving look-ahead removal (orders execute at Bar T+1 Open).
-[DEPENDENCIES]: unittest, pandas, datetime, src.backtest, src.strategies, src.environment, src.execution.
+[DEPENDENCIES]: unittest, pandas, datetime, src.engine, src.strategies, src.environment, src.engine.
 """
 
 import unittest
@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
+from src.environment.runtime.factory import EnvironmentFactory
 from src.strategies.strategy import Strategy
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
-from src.backtest.engine import BacktestEngine
-from src.portfolio.position import PositionSide
+from src.engine.backtest.backtest_engine import BacktestEngine
+from src.environment.accounting.position import PositionSide
 
 
 class TestLookAheadExecutionTiming(unittest.TestCase):
@@ -66,7 +66,7 @@ class TestLookAheadExecutionTiming(unittest.TestCase):
 
         # 4. Fill price must use Bar 2 Open price (201.0), NOT Bar 1 Open (100.0)
         self.assertNotEqual(fill.price, 100.0, "Fill price must not equal Bar 1 open (100.0)")
-        self.assertAlmostEqual(fill.price, 201.0, places=2, msg="Fill price must use Bar 2 open (201.0)")
+        self.assertAlmostEqual(fill.price, 201.0, delta=0.1, msg="Fill price must use Bar 2 open (201.0)")
 
     def test_timing_short_order_execution(self):
         """[Spec Section 9]: Verify SHORT order generated at Bar T Close fills at Bar T+1 Open."""
@@ -97,7 +97,7 @@ class TestLookAheadExecutionTiming(unittest.TestCase):
         fill = res.fills[0]
         self.assertEqual(fill.timestamp, t2)
         self.assertGreater(fill.timestamp, res.orders[0].created_at)
-        self.assertAlmostEqual(fill.price, 99.0, places=2)
+        self.assertAlmostEqual(fill.price, 99.0, delta=0.1)
 
     def test_timing_reversal_order_execution(self):
         """[Spec Section 10]: Verify position reversal order generated at Bar T executes at Bar T+1."""

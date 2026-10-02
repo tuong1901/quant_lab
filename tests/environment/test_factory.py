@@ -20,8 +20,8 @@ class TestEnvironmentFactory(unittest.TestCase):
 
     def test_factory_create_environment_from_config(self):
         """Test creating a complete Environment instance from an ExperimentConfig."""
-        from src.environment.factory import EnvironmentFactory
-        from src.environment.environment import Environment
+        from src.environment.runtime.factory import EnvironmentFactory
+        from src.environment.runtime.environment import Environment
 
         env = EnvironmentFactory.create(config=self.exp_config)
 
@@ -35,7 +35,7 @@ class TestEnvironmentFactory(unittest.TestCase):
 
     def test_factory_dependency_injection_overrides(self):
         """Test that passing pre-constructed dependencies directly into factory overrides default construction."""
-        from src.environment.factory import EnvironmentFactory
+        from src.environment.runtime.factory import EnvironmentFactory
 
         custom_clock = HistoricalClock(start_time=datetime(2025, 6, 1, tzinfo=timezone.utc))
         custom_exec = {"custom": "execution_engine"}

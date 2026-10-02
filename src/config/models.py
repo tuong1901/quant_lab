@@ -8,9 +8,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import StorageReference
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import StorageReference
 from src.config.exceptions import ConfigValidationError
 
 

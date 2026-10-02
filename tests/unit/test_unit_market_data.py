@@ -1,14 +1,14 @@
 """
 [PURPOSE]: Unit tests for Market Data subsystem (loader, bounds validation, hash verification).
-[DEPENDENCIES]: unittest, pandas, datetime, src.market_data.
+[DEPENDENCIES]: unittest, pandas, datetime, src.data.
 """
 
 import unittest
 import pandas as pd
 from datetime import datetime, timezone
 
-from src.market_data.loader import DatasetLoader
-from src.market_data.exceptions import DataValidationError
+from src.data.loader import DatasetLoader
+from src.data.exceptions import DataValidationError
 
 
 class TestUnitMarketData(unittest.TestCase):

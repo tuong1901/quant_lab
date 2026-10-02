@@ -26,7 +26,7 @@ class TestExecutionContext(unittest.TestCase):
 
     def test_execution_context_creation_and_immutability(self):
         """Test creating ExecutionContext and verifying frozen immutability constraint."""
-        from src.environment.context import ExecutionContext
+        from src.environment.runtime.context import ExecutionContext
 
         ctx = ExecutionContext(
             clock=self.clock,

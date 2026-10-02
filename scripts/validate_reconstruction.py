@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.stdout.reconfigure(encoding='utf-8')
 
-from src.trend_engine import compute_indicator_system
+from src.features.indicators import compute_indicator_system
 
 
 def run_validation(data_path: str, limit: int = 100):

@@ -1,15 +1,15 @@
 """
 [PURPOSE]: Invariant tests verifying fundamental accounting formulas across 8 hand-derived trade lifecycle transitions.
-[DEPENDENCIES]: unittest, datetime, src.portfolio, src.execution.
+[DEPENDENCIES]: unittest, datetime, src.environment, src.engine.
 """
 
 import unittest
 from datetime import datetime, timezone
 
-from src.portfolio.portfolio import Portfolio
-from src.portfolio.position import PositionSide
-from src.execution.fill import Fill
-from src.execution.order import OrderSide
+from src.environment.accounting.portfolio import Portfolio
+from src.environment.accounting.position import PositionSide
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import OrderSide
 
 
 class TestAccountingInvariants(unittest.TestCase):
@@ -22,9 +22,9 @@ class TestAccountingInvariants(unittest.TestCase):
         self.portfolio = Portfolio(initial_capital=10000.0)
 
     def _assert_accounting_equation(self, symbol: str, mark_price: float):
-        p_state = self.portfolio.mark_to_market(symbol=symbol, mark_price=mark_price, timestamp=self.now)
+        p_state = self.portfolio.mark_to_market(self.now, {symbol: mark_price})
         expected_cash = (
-            self.portfolio.initial_capital
+            10000.0
             + self.portfolio.account.realized_pnl
             - self.portfolio.account.fees_paid
             - self.portfolio.account.funding_paid

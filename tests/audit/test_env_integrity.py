@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Full Experimental Environment Integrity Audit unit tests covering config propagation, risk sizing, portfolio accounting, margin/leverage, state isolation, and reproducibility.
-[DEPENDENCIES]: unittest, pandas, datetime, src.config, src.environment, src.portfolio, src.execution, src.backtest.
+[DEPENDENCIES]: unittest, pandas, datetime, src.config, src.environment, src.environment, src.engine, src.engine.
 """
 
 import unittest
@@ -8,13 +8,13 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
-from src.portfolio.risk_manager import RiskManager
-from src.portfolio.margin import SimpleMarginModel
-from src.execution.funding import PerpetualFundingModel
-from src.execution.order import Order, OrderSide, OrderType
-from src.execution.fill import Fill
-from src.portfolio.position import PositionSide
+from src.environment.runtime.factory import EnvironmentFactory
+from src.environment.accounting.risk_manager import RiskManager
+from src.environment.accounting.margin import SimpleMarginModel
+from src.engine.models.funding import PerpetualFundingModel
+from src.engine.execution.order import Order, OrderSide, OrderType
+from src.engine.execution.fill import Fill
+from src.environment.accounting.position import PositionSide
 
 
 class TestExperimentalEnvironmentIntegrity(unittest.TestCase):

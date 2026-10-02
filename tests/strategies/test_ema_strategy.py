@@ -5,7 +5,7 @@ Unit tests for EMAStrategy reference implementation (`src/strategies/ema.py`).
 import unittest
 from datetime import datetime, timezone
 
-from src.portfolio.position import PositionSide
+from src.environment.accounting.position import PositionSide
 
 
 class TestEMAStrategy(unittest.TestCase):

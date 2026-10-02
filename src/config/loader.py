@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import yaml
 
-from src.market_data.market import Market
-from src.market_data.timeframe import Timeframe
-from src.market_data.dataset import StorageReference
+from src.data.market import Market
+from src.data.timeframe import Timeframe
+from src.data.dataset import StorageReference
 from src.config.exceptions import (
     ConfigError,
     ConfigFileNotFoundError,
@@ -126,8 +126,8 @@ class ConfigLoader:
 
         tf = Timeframe.parse(ds_data.get("timeframe", "15m"))
         storage_ref = StorageReference(
-            type=str(storage_data.get("type", "local")),
             path=str(storage_data.get("path", "")),
+            format=str(storage_data.get("format", storage_data.get("type", "parquet"))),
         )
 
         return DatasetRefConfig(

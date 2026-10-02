@@ -126,12 +126,37 @@
   * Mô tả chức năng, các lớp (classes), các hàm (functions), tham số đầu vào (`[ARGS]`), giá trị đầu ra (`[RETURNS]`), sự phụ thuộc (`[DEPENDENCIES]`) và tác động hệ thống (`[SIDE EFFECTS & IMPACT]`).
   * Xây dựng ma trận phụ thuộc hướng 1 chiều (DAG Dependency Matrix) và sơ đồ luồng dữ liệu (Data Flow Diagram) chuẩn hóa mối liên kết giữa các module trong hệ thống.
   * Tích hợp tài liệu hướng dẫn chạy 115 test cases (bao gồm Mutation Campaign v2).
+- Xây dựng **Sơ đồ Kiến trúc Hệ thống Master & Mã Draw.io (`system_architecture.drawio`)**:
+  * Đã tổng hợp toàn bộ 8 cụm module (`src/backtest`, `src/core`, `src/environment`, `src/market_data`, `src/features`, `src/strategies`, `src/portfolio`, `src/execution`) và quy tắc biên kiến trúc DAG vào một sơ đồ thống nhất.
+  * Đã tạo file mã nguồn Draw.io XML chuẩn tại [system_architecture.drawio](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/system_architecture.drawio) và tài liệu tổng hợp tại [drawio_system_architecture.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/drawio_system_architecture.md).
+- Xây dựng **Chi Tiết Phân Hệ 1 (`src/core/`) - Mã Bản Vẽ Draw.io Dành Riêng & Báo Cáo Input/Output Kỳ Vọng**:
+  * Đã xuất file Draw.io dành riêng cho Phân hệ 1 tại [subsystem_1_core.drawio](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/subsystem_1_core.drawio) và tài liệu phân tích chi tiết tại [subsystem_1_core_guide.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/subsystem_1_core_guide.md).
+  * Phân tích chi tiết 100% tất cả các file (`types.py`, `clock.py`, `ids.py`, `events.py`, `exceptions.py`), từng hàm, Input/Output thực tế, Input/Output kỳ vọng (Contract) và ví dụ minh họa trực quan.
+
+- Xây dựng **Bộ Bản Vẽ Draw.io Đa Trang Chi Tiết Cho Tất Cả 8 Phân Hệ (`subsystems_architecture.drawio`)**:
+  * Đã xuất file Draw.io 9 trang/tabs tại [subsystems_architecture.drawio](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/subsystems_architecture.drawio) và hướng dẫn chi tiết tại [drawio_all_subsystems_guide.md](file:///C:/Users/tuong.hc/.gemini/antigravity-ide/brain/89950be9-e28c-470c-903c-190039046923/drawio_all_subsystems_guide.md), cho phép người dùng mở từng tab sơ đồ riêng biệt cho từng phân hệ trong Draw.io.
+- Xây dựng **Cẩm Nang Chi Tiết Logic Hoạt Động & Kịch Bản Test Case Từng File (`module_catalog_deep_dive.md`)**:
+  * Liệt kê và phân tích toàn bộ 8 phân hệ trong `src/` qua 4 góc nhìn: Ngôn ngữ Kinh doanh/Đời thực, Thông số Kỹ thuật Chi tiết (Hàm, inputs, outputs, side effects), Mối quan hệ giữa các Folder, và Kịch bản Viết Unit Test gợi ý giúp người dùng tự gõ testcase cho từng file.
+
+- Thực hiện thành công bài task Hợp nhất & Chuẩn hóa Kiến trúc Tinh gọn 6 Khối Physical Domain theo [REQ-20261001-architecture-reorganization.md](file:///d:/reverse_indi/docs/requirements/REQ-20261001-architecture-reorganization.md):
+  * **Hợp nhất 6 Physical Domain Folders**: Tinh gọn thư mục `src/` và `tests/` thành 6 Domain Folders chuẩn (`data`, `environment`, `features`, `strategies`, `engine`, `evaluation`) cùng `core`, `config`, `experiments`. Xóa bỏ hoàn toàn các folder rỗng (`batch`, `generator`, `evolution`, `paper`, `market_data`, `portfolio`, `execution`, `backtest`).
+  * **Xóa 100% Legacy Flat Files**: Xóa sạch các file flat cũ. Mã nguồn hiện tại tập trung 100% tại Single Source of Truth (`src/<domain>/`).
+  * **Khắc phục `VIOLATION-01`**: Di chuyển Enum `PositionSide` về `src/core/types.py`. Bộ kiểm thử tĩnh DAG layer `test_dependency_direction.py` đạt **PASS 100%**.
+  * **Toàn bộ Unit Test Suite PASS 100%**: Tất cả **115/115 unit tests** trong thư mục `tests/` chạy thành công **100% OK**.
+  * **Golden Behavioral Baseline Verification**: Chạy kiểm tra so sánh với snapshot `golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH** (103/103 trades khớp chính xác tuyệt đối từng số thập phân, Final Equity = $11,812.54).
+  * **Pine Script Reconstruction Verification**: Chạy `scripts/validate_reconstruction.py` xác minh độ chính xác 99.9884%.
+  * Lập báo cáo nghiệm thu kiến trúc chi tiết tại [docs/architecture_certification_report.md](file:///d:/reverse_indi/docs/architecture_certification_report.md) và audit simplification tại [docs/architecture_simplification_audit.md](file:///d:/reverse_indi/docs/architecture_simplification_audit.md).
+- Thực hiện thành công bài task Chia nhỏ Sub-package cho `src/engine/` và `src/environment/` theo [REQ-20261002-engine-subfolder-organization.md](file:///d:/reverse_indi/docs/requirements/REQ-20261002-engine-subfolder-organization.md):
+  * **Tách Sub-package Single Responsibility**: Tách `src/engine/` thành 3 sub-packages (`execution/`, `models/`, `backtest/`) và `src/environment/` thành 2 sub-packages (`accounting/`, `runtime/`).
+  * **100% Backward-Compatible Re-exports**: `src/engine/__init__.py` và `src/environment/__init__.py` re-export đầy đủ các public symbols.
+  * **Toàn bộ Unit Test Suite PASS 100%**: 115/115 unit tests vượt qua 100%.
+  * **Golden Baseline Verification**: `run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH**.
 
 ## What's next
-- Khắc phục `VIOLATION-01`: Di chuyển Enum `PositionSide` về `src/core/types.py` để giải phóng hoàn toàn phụ thuộc `strategies -> portfolio`.
 - Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.
 - Khắc phục `AUDIT-CFG-01` & `AUDIT-FUND-01`.
 
 ## Open issues / Notes
-- `VIOLATION-01` (HIGH): `src/strategies/context.py` phụ thuộc trái phép vào `src/portfolio/position` (`PositionSide`).
+- `VIOLATION-01`: Đã giải quyết hoàn toàn (di chuyển `PositionSide` về `src/core/types.py`).
 - `AUDIT-RISK-01` (HIGH): `config/fixed_params.yaml` chứa `risk_per_trade_pct: 0.02` nhưng chưa được nạp vào `RiskManager` / `BacktestEngine` (đang dùng lot cố định 1.0).
+

@@ -1,9 +1,8 @@
 """
 Package initialization for reverse_indi indicator engine.
 """
-from src.trend_engine import (
-    calculate_true_range,
-    calculate_atr,
+from src.features.indicators import (
+    calculate_causal_atr,
     calculate_trend_chinh,
     calculate_trend_phu,
     generate_signals,
@@ -11,8 +10,7 @@ from src.trend_engine import (
 )
 
 __all__ = [
-    'calculate_true_range',
-    'calculate_atr',
+    'calculate_causal_atr',
     'calculate_trend_chinh',
     'calculate_trend_phu',
     'generate_signals',

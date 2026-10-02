@@ -6,10 +6,10 @@ import unittest
 from datetime import datetime, timezone
 
 from src.strategies.signal import Signal, SignalAction
-from src.execution.order import Order, OrderSide, OrderType
-from src.execution.fill import Fill
-from src.portfolio.portfolio_state import PortfolioState
-from src.backtest.result import BacktestResult
+from src.engine.execution.order import Order, OrderSide, OrderType
+from src.engine.execution.fill import Fill
+from src.environment.accounting.portfolio_state import PortfolioState
+from src.engine.execution.result import BacktestResult
 
 
 class TestBasicMetrics(unittest.TestCase):

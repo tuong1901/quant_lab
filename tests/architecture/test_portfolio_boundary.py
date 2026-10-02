@@ -1,15 +1,15 @@
 """
 [PURPOSE]: Portfolio Boundary Guard tests ensuring Portfolio subsystem updates state strictly via Fill operations and MTM without calling Strategy or Execution.
-[DEPENDENCIES]: unittest, ast, pathlib, src.portfolio.
+[DEPENDENCIES]: unittest, ast, pathlib, src.environment.
 """
 
 import ast
 from pathlib import Path
 import unittest
 
-from src.portfolio.portfolio import Portfolio
-from src.execution.fill import Fill
-from src.execution.order import OrderSide
+from src.environment.accounting.portfolio import Portfolio
+from src.engine.execution.fill import Fill
+from src.engine.execution.order import OrderSide
 from datetime import datetime, timezone
 
 
@@ -27,7 +27,7 @@ class TestPortfolioBoundary(unittest.TestCase):
         """[Portfolio Boundary]: Portfolio modules must not import Strategy or Backtest Engine."""
         forbidden_imports = {
             "src.strategies",
-            "src.backtest",
+            "src.engine",
         }
         violations = []
 

@@ -1,6 +1,6 @@
 """
 [PURPOSE]: Reconciliation unit tests (Audit #10, #13, #14, #22, #35) for manual trade auditing and accounting identity verification under next-bar execution semantics.
-[DEPENDENCIES]: unittest, pandas, datetime, src.backtest, src.strategies, src.environment, src.portfolio.
+[DEPENDENCIES]: unittest, pandas, datetime, src.engine, src.strategies, src.environment, src.environment.
 """
 
 import unittest
@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.factory import EnvironmentFactory
+from src.environment.runtime.factory import EnvironmentFactory
 from src.strategies.strategy import Strategy
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
-from src.backtest.engine import BacktestEngine
-from src.portfolio.position import PositionSide
+from src.engine.backtest.backtest_engine import BacktestEngine
+from src.environment.accounting.position import PositionSide
 
 
 class TestAuditReconciliation(unittest.TestCase):
