@@ -12,7 +12,8 @@ import yaml
 import numpy as np
 import pandas as pd
 
-from src.data.loader import load_m15_ohlcv
+from src.data.dataset import Dataset
+from src.data.loader import DatasetLoader
 from src.features.indicators import calculate_causal_atr, calculate_causal_swings
 from src.features.zones import load_active_zones
 from src.experiments.splitter import PurgedWFOSplitter
@@ -35,7 +36,7 @@ def parse_args():
     [SIDE EFFECTS]: Parses CLI inputs.
     """
     parser = argparse.ArgumentParser(description="Pipeline Quant Lab: Fibo Zone-Registry + ATR Ratchet")
-    parser.add_argument('--dataset', type=str, default='data/m15-indivip_signal.csv', help="Path to M15 CSV dataset")
+    parser.add_argument('--dataset-definition', required=True, help="Path to strict Dataset YAML descriptor")
     parser.add_argument('--benchmark-trials', type=int, default=None, help="Run single-window execution benchmark with N trials")
     parser.add_argument('--n-trials', type=int, default=50, help="Optuna trials per WFO window")
     parser.add_argument('--n-windows', type=int, default=3, help="Number of Purged WFO windows")
@@ -77,13 +78,9 @@ def main():
     zones_cfg, fixed_cfg, space_cfg = load_all_configs()
     
     # 1. Data Feed & Causal Feature Engine
-    csv_path = args.dataset
-    if not os.path.exists(csv_path):
-        print(f"Dataset path '{csv_path}' not found. Exiting.")
-        sys.exit(1)
-
-    print(f"[1/5] Loading M15 Dataset: {csv_path}...")
-    df = load_m15_ohlcv(csv_path)
+    dataset = Dataset.from_yaml(args.dataset_definition)
+    print(f"[1/5] Loading strict Dataset: {dataset.identity}...")
+    df = DatasetLoader().load(dataset).df
     print(f"      Total Bars Loaded: {len(df):,}")
 
     atr_period = fixed_cfg.get('atr_ratchet', {}).get('period', 14)

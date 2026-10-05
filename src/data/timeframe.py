@@ -23,7 +23,7 @@ def validate_utc_timestamp(dt: datetime) -> datetime:
     if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
         raise DataValidationError(f"Timestamp must be UTC timezone-aware, got naive datetime: {dt}")
 
-    return dt
+    return dt.astimezone(timezone.utc)
 
 
 def create_utc_timestamp(val: Union[str, datetime]) -> datetime:
@@ -34,16 +34,15 @@ def create_utc_timestamp(val: Union[str, datetime]) -> datetime:
     [RETURNS]: Canonical UTC datetime.
     [SIDE EFFECTS]: None.
     """
-    if isinstance(val, datetime):
-        dt = val
-    elif isinstance(val, str):
-        val_clean = val.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(val_clean)
-    else:
-        raise DataValidationError(f"Cannot parse UTC timestamp from {type(val)}")
-
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+    try:
+        if isinstance(val, datetime):
+            dt = val
+        elif isinstance(val, str):
+            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+        else:
+            raise DataValidationError(f"Cannot parse UTC timestamp from {type(val)}")
+    except ValueError as error:
+        raise DataValidationError(f"Invalid ISO-8601 timestamp: {val!r}") from error
 
     return validate_utc_timestamp(dt)
 

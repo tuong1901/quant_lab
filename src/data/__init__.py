@@ -15,7 +15,7 @@ from src.data.exceptions import (
 from src.data.market import Market
 from src.data.timeframe import Timeframe
 from src.data.dataset import DataRange, StorageReference, Dataset
-from src.data.versioning import calculate_content_hash, verify_dataset_hash
+from src.data.versioning import calculate_content_hash, canonicalize_ohlcv, enforce_open_close_continuity, verify_dataset_hash
 from src.data.catalog import DatasetCatalog
 from src.data.loader import MarketData, DatasetLoader, load_m15_ohlcv
 from src.data.compatibility import validate_compatible_datasets
@@ -35,6 +35,8 @@ __all__ = [
     "StorageReference",
     "Dataset",
     "calculate_content_hash",
+    "canonicalize_ohlcv",
+    "enforce_open_close_continuity",
     "verify_dataset_hash",
     "DatasetCatalog",
     "MarketData",

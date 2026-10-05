@@ -21,3 +21,10 @@ def validate_compatible_datasets(strategy_ds: Dataset, execution_ds: Dataset) ->
             f"Execution timeframe '{execution_ds.timeframe.value}' cannot be higher "
             f"than Strategy timeframe '{strategy_ds.timeframe.value}'."
         )
+
+    overlap_start = max(strategy_ds.data_range.start, execution_ds.data_range.start)
+    overlap_end = min(strategy_ds.data_range.end, execution_ds.data_range.end)
+    if overlap_start >= overlap_end:
+        raise IncompatibleDatasetError(
+            "Strategy and execution datasets must have an overlapping DataRange."
+        )

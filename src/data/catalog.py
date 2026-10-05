@@ -41,6 +41,16 @@ class DatasetCatalog:
         """[PURPOSE]: List all registered Datasets."""
         return list(self._registry.values())
 
+    def list_versions(self, dataset_id: str) -> List[str]:
+        """
+        [PURPOSE]: List registered versions for one dataset identifier in ascending order.
+        [DEPENDENCIES]: Internal Dataset registry.
+        [ARGS]: dataset_id — Dataset identifier without version suffix.
+        [RETURNS]: Sorted list of version strings.
+        [SIDE EFFECTS]: None.
+        """
+        return sorted(ds.version for ds in self._registry.values() if ds.dataset_id == dataset_id)
+
     def load_from_file(self, yaml_path: str) -> Dataset:
         """[PURPOSE]: Load dataset definition from YAML file and register it."""
         ds = Dataset.from_yaml(yaml_path)
@@ -57,9 +67,6 @@ class DatasetCatalog:
             for f in files:
                 if f.endswith(".yaml") or f.endswith(".yml"):
                     full_p = os.path.join(root, f)
-                    try:
-                        ds = self.load_from_file(full_p)
-                        loaded.append(ds)
-                    except Exception:
-                        pass
+                    ds = self.load_from_file(full_p)
+                    loaded.append(ds)
         return loaded

@@ -1,195 +1,111 @@
-"""
-Dataset Loader & Validator (`src/data/loader.py`).
-"""
+"""Strict physical loading and validation for market datasets."""
 
 from dataclasses import dataclass
-from datetime import timezone
-import os
+from pathlib import Path
+
 import pandas as pd
 
+from src.data.dataset import DataRange, Dataset
 from src.data.exceptions import DataValidationError, InvalidDatasetError
-from src.data.dataset import Dataset
-from src.data.versioning import calculate_content_hash
+from src.data.timeframe import Timeframe
+from src.data.versioning import canonicalize_ohlcv, calculate_content_hash
 
 
 @dataclass(frozen=True)
 class MarketData:
     """
-    [PURPOSE]: Container holding loaded DataFrame along with its immutable Dataset metadata.
+    [PURPOSE]: Pair one verified Dataset descriptor with canonical OHLCV data.
+    [DEPENDENCIES]: Dataset, pandas.
+    [ARGS]: dataset — Verified metadata; df — Canonical OHLCV DataFrame.
+    [RETURNS]: Immutable MarketData container.
+    [SIDE EFFECTS]: None.
     """
+
     dataset: Dataset
     df: pd.DataFrame
 
 
 class DatasetLoader:
-    """
-    [PURPOSE]: Service responsible for reading dataset files and performing strict validation.
-    """
+    """Read Dataset storage and enforce the complete strict data contract."""
 
     def load(self, dataset: Dataset) -> MarketData:
-        """[PURPOSE]: Load and validate OHLCV dataset from physical storage."""
+        """
+        [PURPOSE]: Load a dataset and reject any schema, temporal, OHLCV, hash or gap breach.
+        [DEPENDENCIES]: Dataset, canonicalize_ohlcv, calculate_content_hash.
+        [ARGS]: dataset — Immutable Dataset descriptor.
+        [RETURNS]: Verified MarketData.
+        [SIDE EFFECTS]: Reads local storage and raises DataValidationError on contract failure.
+        """
         if not isinstance(dataset, Dataset):
-            raise InvalidDatasetError(f"Expected Dataset instance, got {type(dataset)}")
-
-        file_path = dataset.storage_reference.path
-        if not os.path.exists(file_path):
-            raise DataValidationError(f"Storage reference file not found at path: {file_path}")
-
-        df = self._read_file(file_path)
-        self._validate_schema(df)
-        df = self._validate_and_format_timestamps(df, dataset)
-        self._validate_ohlcv_bounds(df)
-
-        computed_hash = calculate_content_hash(df)
-        if computed_hash.lower() != dataset.content_hash.lower():
-            raise DataValidationError(
-                f"Content hash mismatch for dataset '{dataset.identity}'. "
-                f"Expected: {dataset.content_hash}, Computed: {computed_hash}"
-            )
-
-        missing_count = self.detect_missing_candles(df, dataset.timeframe)
-        if missing_count > 0:
-            pass
-
-        return MarketData(dataset=dataset, df=df)
-
-    def _read_file(self, file_path: str) -> pd.DataFrame:
-        lower_path = file_path.lower()
+            raise InvalidDatasetError(f"Expected Dataset, got {type(dataset)}")
+        path = Path(dataset.storage_reference.path)
+        if not path.is_file():
+            raise DataValidationError(f"Dataset storage not found: {path}")
         try:
-            if lower_path.endswith(".parquet") or lower_path.endswith(".pq"):
-                return pd.read_parquet(file_path)
-            elif lower_path.endswith(".csv"):
-                return pd.read_csv(file_path)
-            else:
-                try:
-                    return pd.read_parquet(file_path)
-                except Exception:
-                    return pd.read_csv(file_path)
-        except Exception as e:
-            raise DataValidationError(f"Failed to read file from '{file_path}': {str(e)}")
+            raw = pd.read_csv(path) if dataset.storage_reference.format == "csv" else pd.read_parquet(path)
+        except (OSError, ValueError, ImportError) as error:
+            raise DataValidationError(f"Unable to read dataset storage {path}: {error}") from error
+        frame = canonicalize_ohlcv(raw)
+        self._validate_temporal_contract(frame, dataset.data_range, dataset.timeframe)
+        self._validate_ohlcv_bounds(frame)
+        if calculate_content_hash(frame) != dataset.content_hash:
+            raise DataValidationError(f"Content hash mismatch for dataset {dataset.identity}.")
+        return MarketData(dataset=dataset, df=frame)
 
-    def _validate_schema(self, df: pd.DataFrame) -> None:
-        if df.empty:
-            raise DataValidationError("Loaded dataset DataFrame is empty.")
+    @staticmethod
+    def _validate_temporal_contract(frame: pd.DataFrame, data_range: DataRange, timeframe: Timeframe) -> None:
+        """
+        [PURPOSE]: Enforce UTC ordering, [start,end) coverage and no-gap candle cadence.
+        [DEPENDENCIES]: DataRange, Timeframe, pandas.
+        [ARGS]: frame, data_range, timeframe.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Raises DataValidationError for duplicate, unordered, out-of-range or gapped data.
+        """
+        timestamps = frame["timestamp"]
+        if timestamps.duplicated().any() or not timestamps.is_monotonic_increasing:
+            raise DataValidationError("Timestamps must be unique and strictly increasing.")
+        if timestamps.min() < pd.Timestamp(data_range.start) or timestamps.max() >= pd.Timestamp(data_range.end):
+            raise DataValidationError("Timestamps must satisfy DataRange [start, end).")
+        interval = pd.Timedelta(seconds=timeframe.to_seconds())
+        if (timestamps.diff().dropna() != interval).any():
+            raise DataValidationError("Dataset contains missing or irregular candles under strict gap policy.")
 
-        required_cols = {"open", "high", "low", "close", "volume"}
-        cols = {c.lower() for c in df.columns}
-        missing = required_cols - cols
-        if missing:
-            raise DataValidationError(f"Dataset missing required OHLCV columns: {missing}")
-
-        has_timestamp_col = "timestamp" in cols or "time" in cols or "date" in cols
-        has_timestamp_idx = isinstance(df.index, pd.DatetimeIndex) or df.index.name == "timestamp"
-        if not (has_timestamp_col or has_timestamp_idx):
-            raise DataValidationError("Dataset must contain a 'timestamp' column or DatetimeIndex.")
-
-    def _validate_and_format_timestamps(self, df: pd.DataFrame, dataset: Dataset) -> pd.DataFrame:
-        working_df = df.copy()
-
-        if "timestamp" in working_df.columns:
-            ts_series = working_df["timestamp"]
-        elif "time" in working_df.columns:
-            ts_series = working_df["time"]
-            working_df = working_df.rename(columns={"time": "timestamp"})
-        elif "date" in working_df.columns:
-            ts_series = working_df["date"]
-            working_df = working_df.rename(columns={"date": "timestamp"})
-        elif isinstance(working_df.index, pd.DatetimeIndex):
-            ts_series = working_df.index.to_series()
-            working_df["timestamp"] = ts_series.values
-        else:
-            raise DataValidationError("Unable to locate timestamp series in DataFrame.")
-
-        parsed_ts = pd.to_datetime(ts_series, utc=True)
-        working_df["timestamp"] = parsed_ts
-
-        if parsed_ts.isna().any():
-            raise DataValidationError("Found invalid or unparseable NaT timestamps in dataset.")
-
-        if parsed_ts.duplicated().any():
-            dup_sample = parsed_ts[parsed_ts.duplicated()].iloc[0]
-            raise DataValidationError(f"Duplicate timestamp detected in dataset: {dup_sample}")
-
-        if not parsed_ts.is_monotonic_increasing:
-            raise DataValidationError("Timestamps are not strictly monotonic increasing.")
-
-        min_ts = parsed_ts.min()
-        max_ts = parsed_ts.max()
-
-        if min_ts < dataset.data_range.start:
-            raise DataValidationError(
-                f"Dataset contains timestamps earlier than data_range.start: {min_ts} < {dataset.data_range.start}"
-            )
-
-        if max_ts > dataset.data_range.end:
-            raise DataValidationError(
-                f"Dataset contains timestamps later than data_range.end: {max_ts} > {dataset.data_range.end}"
-            )
-
-        return working_df
-
-    def _validate_ohlcv_bounds(self, df: pd.DataFrame) -> None:
-        open_s = df["open"]
-        high_s = df["high"]
-        low_s = df["low"]
-        close_s = df["close"]
-        volume_s = df["volume"]
-
-        if (high_s < low_s).any():
-            invalid_rows = df[high_s < low_s]
-            bad_ts = invalid_rows["timestamp"].iloc[0] if "timestamp" in invalid_rows else "unknown"
-            raise DataValidationError(f"OHLC violation: high < low at timestamp {bad_ts}")
-
-        max_body = open_s.combine(close_s, max)
-        if (high_s < max_body).any():
-            invalid_rows = df[high_s < max_body]
-            bad_ts = invalid_rows["timestamp"].iloc[0] if "timestamp" in invalid_rows else "unknown"
-            raise DataValidationError(f"OHLC violation: high < max(open, close) at timestamp {bad_ts}")
-
-        min_body = open_s.combine(close_s, min)
-        if (low_s > min_body).any():
-            invalid_rows = df[low_s > min_body]
-            bad_ts = invalid_rows["timestamp"].iloc[0] if "timestamp" in invalid_rows else "unknown"
-            raise DataValidationError(f"OHLC violation: low > min(open, close) at timestamp {bad_ts}")
-
-        if (volume_s < 0).any():
-            raise DataValidationError("OHLCV violation: negative volume detected.")
-
-    def detect_missing_candles(self, df: pd.DataFrame, timeframe: Any) -> int:
-        if df.empty or len(df) < 2:
-            return 0
-
-        tf_seconds = pd.Timedelta(seconds=timeframe.to_seconds())
-        ts_diff = df["timestamp"].diff().dropna()
-
-        gaps = ts_diff[ts_diff > tf_seconds]
-        missing_bars = 0
-        for gap in gaps:
-            missing_bars += int(gap / tf_seconds) - 1
-
-        return missing_bars
+    @staticmethod
+    def _validate_ohlcv_bounds(frame: pd.DataFrame) -> None:
+        """
+        [PURPOSE]: Validate OHLC bounds and non-negative volume.
+        [DEPENDENCIES]: pandas.
+        [ARGS]: frame — Canonical OHLCV DataFrame.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Raises DataValidationError when an OHLCV invariant fails.
+        """
+        if (frame["high"] < frame["low"]).any():
+            raise DataValidationError("OHLC violation: high < low.")
+        if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
+            raise DataValidationError("OHLC violation: high < max(open, close).")
+        if (frame["low"] > frame[["open", "close"]].min(axis=1)).any():
+            raise DataValidationError("OHLC violation: low > min(open, close).")
+        if (frame["volume"] < 0).any():
+            raise DataValidationError("OHLCV violation: negative volume.")
 
 
 def load_m15_ohlcv(csv_path: str) -> pd.DataFrame:
     """
-    [PURPOSE]: Load M15 OHLCV dataset from CSV into a clean pandas DataFrame.
+    [PURPOSE]: Retain a deprecated compatibility adapter backed by strict validation.
+    [DEPENDENCIES]: DatasetLoader validation primitives, Timeframe.
+    [ARGS]: csv_path — M15 CSV path.
+    [RETURNS]: Canonical validated M15 DataFrame.
+    [SIDE EFFECTS]: Reads storage and raises DataValidationError for invalid data.
     """
-    df = pd.read_csv(csv_path)
-    col_map = {col: col.lower().strip() for col in df.columns}
-    df = df.rename(columns=col_map)
-    
-    required_cols = ['open', 'high', 'low', 'close']
-    for col in required_cols:
-        if col not in df.columns:
-            raise KeyError(f"Required column '{col}' missing from dataset {csv_path}")
-            
-    df['open'] = df['open'].astype(float)
-    df['high'] = df['high'].astype(float)
-    df['low'] = df['low'].astype(float)
-    df['close'] = df['close'].astype(float)
-    if 'volume' in df.columns:
-        df['volume'] = df['volume'].astype(float)
-    else:
-        df['volume'] = 1.0
-        
-    return df
+    path = Path(csv_path)
+    if not path.is_file():
+        raise DataValidationError(f"Dataset storage not found: {path}")
+    frame = canonicalize_ohlcv(pd.read_csv(path))
+    timestamps = frame["timestamp"]
+    if timestamps.duplicated().any() or not timestamps.is_monotonic_increasing:
+        raise DataValidationError("Timestamps must be unique and strictly increasing.")
+    DatasetLoader._validate_ohlcv_bounds(frame)
+    interval = pd.Timedelta(seconds=Timeframe.M15.to_seconds())
+    if (timestamps.diff().dropna() != interval).any():
+        raise DataValidationError("M15 dataset contains missing or irregular candles.")
+    return frame

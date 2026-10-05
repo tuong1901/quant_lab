@@ -1,5 +1,11 @@
 # Project Status
 
+## Done
+- REQ: `docs/requirements/REQ-20261005-data-contract-strict-pipeline.md`.
+- Strict data contract now enforces canonical UTC timestamps, `[start, end)`, full market identity, canonical SHA-256, OHLCV bounds, and strict no-gap loading.
+- Canonicalization now aligns each non-initial candle open to the preceding close before hash/validation; invalid corrected OHLC ranges remain rejected.
+- Targeted contract + real-data E2E suite: 13 tests passing; dedicated mutation test passes. Production CLI now requires YAML Dataset descriptors.
+
 ## What was done
 - Tái tạo thành công chỉ báo VIP Multi-Trend Indicator (khớp số học 99.98% với `indicator_vip.pine`).
 - Cập nhật mã nguồn Pine Script v5 hoàn chỉnh tại [tradingview/indicator_vip.pine](file:///d:/reverse_indi/tradingview/indicator_vip.pine) tập trung 100% vào **Cụm 3 Đường Nấc Thang Ở Giữa (3-Line Stepped Trend Ribbon)**:
@@ -187,4 +193,3 @@
 ## Open issues / Notes
 - Toàn bộ codebase hiện tuân thủ chặt chẽ kiến trúc 3-tier layering: `Research (Data, Features, Strategies)` -> `Trading Engine (Execution, Portfolio, Backtest)` -> `Evaluation (Metrics, Alpha Decay, Reporting)`.
 - `AUDIT-RISK-01` (HIGH): `config/fixed_params.yaml` chứa `risk_per_trade_pct: 0.02` nhưng chưa được nạp vào `RiskManager` / `BacktestEngine` (đang dùng lot cố định 1.0).
-
