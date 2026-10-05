@@ -10,7 +10,7 @@ from src.strategies.exceptions import (
     StrategyContextError,
 )
 from src.strategies.signal import SignalAction, Signal
-from src.strategies.context import StrategyContext
+from src.strategies.context import StrategyContext, PositionSide
 from src.strategies.strategy import Strategy
 from src.strategies.ema import EMAStrategy
 
@@ -21,6 +21,7 @@ __all__ = [
     "SignalAction",
     "Signal",
     "StrategyContext",
+    "PositionSide",
     "Strategy",
     "EMAStrategy",
 ]

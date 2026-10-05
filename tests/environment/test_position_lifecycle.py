@@ -5,8 +5,8 @@
 
 import unittest
 from datetime import datetime, timezone
-from src.engine import Fill, OrderSide
-from src.environment import Portfolio, Position, PositionSide, InvalidPositionError
+from src.trading import Fill, OrderSide
+from src.trading import Portfolio, Position, PositionSide, InvalidPositionError
 
 class TestPositionLifecycle(unittest.TestCase):
     def test_open_and_increase_position_weighted_average(self):

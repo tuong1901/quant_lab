@@ -7,9 +7,9 @@ import ast
 from pathlib import Path
 import unittest
 
-from src.environment.accounting.portfolio import Portfolio
-from src.engine.execution.fill import Fill
-from src.engine.execution.order import OrderSide
+from src.trading.portfolio.portfolio import Portfolio
+from src.trading.execution.fill import Fill
+from src.trading.execution.order import OrderSide
 from datetime import datetime, timezone
 
 

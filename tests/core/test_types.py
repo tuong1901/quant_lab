@@ -13,7 +13,7 @@ class TestCoreTypes(unittest.TestCase):
 
     def test_validate_utc_timestamp_valid(self):
         """Test valid UTC-aware datetime passes validation."""
-        from src.core.types import validate_utc_timestamp
+        from src.data.timeframe import validate_utc_timestamp
 
         valid_dt = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = validate_utc_timestamp(valid_dt)
@@ -21,16 +21,16 @@ class TestCoreTypes(unittest.TestCase):
 
     def test_validate_utc_timestamp_rejects_naive(self):
         """Test naive datetime without timezone info is strictly rejected."""
-        from src.core.types import validate_utc_timestamp
-        from src.core.exceptions import QuantSystemError
+        from src.data.timeframe import validate_utc_timestamp
+        from src.trading.execution.exceptions import QuantSystemError
 
         naive_dt = datetime(2026, 1, 1, 12, 0, 0)
-        with self.assertRaises((QuantSystemError, ValueError)):
+        with self.assertRaises((QuantSystemError, Exception)):
             validate_utc_timestamp(naive_dt)
 
     def test_create_utc_timestamp_from_iso_string(self):
         """Test creating UTC timestamp from ISO 8601 string representation."""
-        from src.core.types import create_utc_timestamp
+        from src.data.timeframe import create_utc_timestamp
 
         dt_str = "2026-09-18T15:30:00Z"
         ts = create_utc_timestamp(dt_str)

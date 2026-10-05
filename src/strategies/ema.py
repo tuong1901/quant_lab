@@ -4,7 +4,7 @@ Reference EMA Crossover Strategy implementation (`src/strategies/ema.py`).
 
 from typing import Optional, Union
 
-from src.core.ids import StrategyId
+from src.strategies.strategy import StrategyId
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
 

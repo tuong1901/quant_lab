@@ -5,8 +5,8 @@
 
 import unittest
 from datetime import datetime, timezone
-from src.engine import Fill, OrderSide
-from src.environment import Portfolio, PositionSide
+from src.trading import Fill, OrderSide
+from src.trading import Portfolio, PositionSide
 
 class TestPortfolioIntegration(unittest.TestCase):
     def test_portfolio_end_to_end_example(self):

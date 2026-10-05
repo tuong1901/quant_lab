@@ -8,14 +8,14 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.runtime.factory import EnvironmentFactory
+from src.trading.backtest import EnvironmentFactory
 from src.strategies.ema import EMAStrategy
 from src.strategies.signal import Signal
-from src.engine.execution.order import Order
-from src.engine.execution.fill import Fill
-from src.environment.accounting.portfolio_state import PortfolioState
-from src.engine.backtest.backtest_engine import BacktestEngine
-from src.engine.backtest.backtest_result import BacktestResult
+from src.trading.execution.order import Order
+from src.trading.execution.fill import Fill
+from src.trading.portfolio.portfolio import PortfolioState
+from src.trading.backtest import BacktestEngine
+from src.trading.backtest import BacktestResult
 from src.evaluation.metrics import BasicMetrics, calculate_basic_metrics
 
 

@@ -14,11 +14,13 @@ import yaml
 import numpy as np
 import pandas as pd
 
-from src.data.loader import load_m15_ohlcv
+from src.data.dataset import Dataset
+from src.data.loader import DatasetLoader
+from src.data.strict import load_m15_ohlcv
 from src.features.indicators import calculate_causal_atr, calculate_causal_swings
 from src.experiments.splitter import PurgedWFOSplitter
-from src.engine.backtest.optimizer import run_optuna_study
-from src.engine.backtest.simulator import run_trade_simulation
+from src.experiments.optimizer import run_optuna_study
+from src.trading.backtest import run_trade_simulation
 from src.evaluation.alpha_decay import (
     evaluate_time_horizons,
     evaluate_trade_count_horizons,
@@ -32,7 +34,7 @@ def parse_args():
     [PURPOSE]: Parse command-line arguments for pipeline execution.
     """
     parser = argparse.ArgumentParser(description="Pipeline Quant Lab: Fibo Zone-Registry + ATR Ratchet")
-    parser.add_argument('--dataset', type=str, default='data/m15-indivip_signal.csv', help="Path to M15 CSV dataset")
+    parser.add_argument('--dataset-definition', type=str, default=None, help="Path to strict Dataset YAML descriptor")
     parser.add_argument('--benchmark-trials', type=int, default=None, help="Run single-window execution benchmark with N trials")
     parser.add_argument('--n-trials', type=int, default=50, help="Optuna trials per WFO window")
     parser.add_argument('--n-windows', type=int, default=3, help="Number of Purged WFO windows")
@@ -134,13 +136,12 @@ def main():
 
     zones_cfg, fixed_cfg, space_cfg = load_all_configs()
     
-    csv_path = args.dataset
-    if not os.path.exists(csv_path):
-        print(f"Dataset path '{csv_path}' not found. Exiting.")
+    if not args.dataset_definition:
+        print("--dataset-definition is required for production runs. Exiting.")
         sys.exit(1)
-
-    print(f"[1/5] Loading M15 Dataset: {csv_path}...")
-    df = load_m15_ohlcv(csv_path)
+    dataset = Dataset.from_yaml(args.dataset_definition)
+    print(f"[1/5] Loading strict Dataset: {dataset.identity}...")
+    df = DatasetLoader().load(dataset).df
     print(f"      Total Bars Loaded: {len(df):,}")
 
     atr_period = fixed_cfg.get('atr_ratchet', {}).get('period', 14)

@@ -4,9 +4,9 @@ Strategy Protocol interface (`src/strategies/strategy.py`).
 
 from typing import Protocol, runtime_checkable, Union
 
-from src.core.ids import StrategyId
 from src.strategies.context import StrategyContext
-from src.strategies.signal import Signal
+from src.strategies.signal import Signal, StrategyId
+
 
 
 @runtime_checkable

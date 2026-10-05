@@ -5,7 +5,7 @@ Unit tests for Environment domain model container (`src/environment/environment.
 import unittest
 from datetime import datetime, timezone
 
-from src.core.clock import HistoricalClock
+from src.trading.backtest import HistoricalClock
 from src.config.loader import ConfigLoader
 
 
@@ -21,8 +21,8 @@ class TestEnvironment(unittest.TestCase):
 
     def test_environment_immutability(self):
         """Test that Environment dataclass attributes cannot be mutated after creation."""
-        from src.environment.runtime.registry import Registry
-        from src.environment.runtime.environment import Environment
+        from src.trading.backtest import Registry
+        from src.trading.backtest import Environment
 
         dummy_md = {"symbol": "BTCUSDT"}
         dummy_exec = {"engine": "mock"}
@@ -46,9 +46,9 @@ class TestEnvironment(unittest.TestCase):
 
     def test_missing_clock_raises_error(self):
         """Test that missing clock component raises MissingDependencyError."""
-        from src.environment.runtime.registry import Registry
-        from src.environment.runtime.environment import Environment
-        from src.environment.exceptions import MissingDependencyError
+        from src.trading.backtest import Registry
+        from src.trading.backtest import Environment
+        from src.trading.backtest import MissingDependencyError
 
         reg = Registry()
         with self.assertRaises(MissingDependencyError):

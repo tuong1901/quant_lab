@@ -6,10 +6,10 @@ import unittest
 from datetime import datetime, timezone
 
 from src.strategies.signal import Signal, SignalAction
-from src.engine.execution.order import Order, OrderSide, OrderType
-from src.engine.execution.fill import Fill
-from src.environment.accounting.portfolio_state import PortfolioState
-from src.environment.accounting.account import Account
+from src.trading.execution.order import Order, OrderSide, OrderType
+from src.trading.execution.fill import Fill
+from src.trading.portfolio.portfolio import PortfolioState
+from src.trading.portfolio.account import Account
 
 
 class TestBacktestResult(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestBacktestResult(unittest.TestCase):
 
     def test_backtest_result_creation_and_immutability(self):
         """Test BacktestResult initialization and frozen immutability."""
-        from src.engine.execution.result import BacktestResult
+        from src.trading.backtest import BacktestResult
 
         res = BacktestResult(
             run_id="run_001",
@@ -86,7 +86,7 @@ class TestBacktestResult(unittest.TestCase):
 
     def test_convenience_properties(self):
         """Test final_cash, final_equity, realized_pnl, and total_fees convenience properties."""
-        from src.engine.execution.result import BacktestResult
+        from src.trading.backtest import BacktestResult
 
         res = BacktestResult(
             run_id="run_002",

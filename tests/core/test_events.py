@@ -13,8 +13,7 @@ class TestCoreEvents(unittest.TestCase):
 
     def test_event_creation_and_immutability(self):
         """Test Event instance creation and frozen immutability constraint."""
-        from src.core.ids import EventId
-        from src.core.events import Event
+        from src.trading.execution.order import EventId, Event
 
         evt_id = EventId.generate()
         dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -29,8 +28,7 @@ class TestCoreEvents(unittest.TestCase):
 
     def test_deterministic_event_sorting(self):
         """Test that events are sorted deterministically first by timestamp, then by sequence integer."""
-        from src.core.ids import EventId
-        from src.core.events import Event
+        from src.trading.execution.order import EventId, Event
 
         dt1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         dt2 = datetime(2024, 1, 1, 12, 15, 0, tzinfo=timezone.utc)

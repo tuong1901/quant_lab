@@ -1,5 +1,11 @@
 # Project Status
 
+## Done
+- REQ: `docs/requirements/REQ-20261005-data-contract-strict-pipeline.md`.
+- Strict data contract now enforces canonical UTC timestamps, `[start, end)`, full market identity, canonical SHA-256, OHLCV bounds, and strict no-gap loading.
+- Canonicalization now aligns each non-initial candle open to the preceding close before hash/validation; invalid corrected OHLC ranges remain rejected.
+- Targeted contract + real-data E2E suite: 13 tests passing; dedicated mutation test passes. Production CLI now requires YAML Dataset descriptors.
+
 ## What was done
 - Tái tạo thành công chỉ báo VIP Multi-Trend Indicator (khớp số học 99.98% với `indicator_vip.pine`).
 - Cập nhật mã nguồn Pine Script v5 hoàn chỉnh tại [tradingview/indicator_vip.pine](file:///d:/reverse_indi/tradingview/indicator_vip.pine) tập trung 100% vào **Cụm 3 Đường Nấc Thang Ở Giữa (3-Line Stepped Trend Ribbon)**:
@@ -152,11 +158,38 @@
   * **Toàn bộ Unit Test Suite PASS 100%**: 115/115 unit tests vượt qua 100%.
   * **Golden Baseline Verification**: `run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH**.
 
+- Thực hiện thành công bài task Cập nhật toàn bộ tài liệu Catalog Kiến trúc theo [REQ-20261002-update-readme-architecture.md](file:///d:/reverse_indi/docs/requirements/REQ-20261002-update-readme-architecture.md):
+  * **Cập nhật Root [README.md](file:///d:/reverse_indi/README.md)**: Phản ánh sơ đồ cây 6 Physical Domains chuẩn hóa cùng cấu trúc sub-packages mới của `engine` và `environment`.
+  * **Cập nhật Master Source Catalog [src/README.md](file:///d:/reverse_indi/src/README.md)**: Liệt kê chi tiết 100% tất cả các file nguồn, lớp, hàm, tham số đầu vào (`[ARGS]`), giá trị đầu ra (`[RETURNS]`), phụ thuộc (`[DEPENDENCIES]`), tác động hệ thống (`[SIDE EFFECTS & IMPACT]`), đường dẫn file chuẩn markdown link (`file:///...`) và ma trận phụ thuộc hướng DAG.
+
+- Thực hiện thành công bài task Giải thể hoàn toàn thư mục `src/core/` và Phân bổ lại về các Domain Owners theo [REQ-20261002-dissolve-core-folder.md](file:///d:/reverse_indi/docs/requirements/REQ-20261002-dissolve-core-folder.md):
+  * **Giải thể `src/core/` 100%**: Xóa bỏ hoàn toàn folder `src/core/` giúp kiến trúc gọn gàng, trực quan và không có lớp trừu tượng dư thừa.
+  * **Phân bổ về đúng Domain Owner**: `PositionSide` $\rightarrow$ `src/environment/accounting/position.py`; `OrderSide`, `OrderId`, `FillId`, `Event` $\rightarrow$ `src/engine/execution/order.py`; `Clock`, `HistoricalClock` $\rightarrow$ `src/engine/backtest/clock.py`; `validate_utc_timestamp`, `create_utc_timestamp`, `BaseId` $\rightarrow$ `src/data/timeframe.py` & `src/data/dataset.py`; `StrategyId` $\rightarrow$ `src/strategies/signal.py`.
+  * **Toàn bộ Unit Test Suite PASS 100%**: 115/115 unit tests vượt qua 100%.
+  * **Golden Baseline Verification**: `run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH**.
+
+- Thực hiện thành công bài task Refactor Về Kiến Trúc Cuối Cùng (FINAL ARCHITECTURE) theo [REQ-20261002-refactor-final-architecture.md](file:///d:/reverse_indi/docs/requirements/REQ-20261002-refactor-final-architecture.md):
+  * **Cấu trúc Thư mục Chuẩn Hóa**:
+    - `src/config/`: Configuration layer.
+    - `src/data/`: Single Source of Truth cho market data, data loading và dataset specifications.
+    - `src/features/`: Indicators, zones, registry.
+    - `src/strategies/`: Strategy contracts, DSL, context, reference strategies.
+    - `src/trading/`:
+      - `execution/`: Order, fill, broker, fill_model, slippage, fees, funding, execution engine.
+      - `portfolio/`: Account, position, portfolio, pnl, margin, risk.
+      - `backtest.py`: BacktestEngine, HistoricalClock, Clock, BacktestResult, EnvironmentFactory, run_trade_simulation.
+    - `src/experiments/`: Planner, splitter, optimizer (Optuna Bayesian WFO), runner, window.
+    - `src/evaluation/`: Metrics, alpha decay, reporting.
+  * **Giải thể triệt để**: Xóa sạch toàn bộ các thư mục cũ `src/engine/`, `src/environment/`, và `src/market_data/`.
+  * **Bảo vệ ranh giới kiến trúc (DAG Guard)**: `tests/architecture/test_dependency_direction.py` đạt **PASS 100%** (ngăn chặn triệt để mọi phụ thuộc ngược từ `strategies` vào `trading`).
+  * **Toàn bộ Unit Test Suite PASS 100%**: Tất cả **115/115 unit tests** trong thư mục `tests/` chạy thành công **100% OK**.
+  * **Golden Behavioral Baseline Verification**: `run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json` đạt **PASSED 100.0000% NUMERICAL MATCH** (103/103 trades, Final Equity Exact Match = $11,812.54).
+  * **Pipeline Benchmark Verification**: `run_pipeline.py --benchmark-trials 5` chạy mượt mà, hoàn thành trong 1.89s (377.4 ms/trial).
+
 ## What's next
 - Khắc phục `AUDIT-RISK-01`: Cấu hình và tích hợp Stop-Distance Position Sizing ($Qty = \frac{Capital \times Risk\%}{|Entry - Stop|}$) và Margin Rejection vào `RiskManager`.
 - Khắc phục `AUDIT-CFG-01` & `AUDIT-FUND-01`.
 
 ## Open issues / Notes
-- `VIOLATION-01`: Đã giải quyết hoàn toàn (di chuyển `PositionSide` về `src/core/types.py`).
+- Toàn bộ codebase hiện tuân thủ chặt chẽ kiến trúc 3-tier layering: `Research (Data, Features, Strategies)` -> `Trading Engine (Execution, Portfolio, Backtest)` -> `Evaluation (Metrics, Alpha Decay, Reporting)`.
 - `AUDIT-RISK-01` (HIGH): `config/fixed_params.yaml` chứa `risk_per_trade_pct: 0.02` nhưng chưa được nạp vào `RiskManager` / `BacktestEngine` (đang dùng lot cố định 1.0).
-

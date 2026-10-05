@@ -10,28 +10,26 @@ import unittest
 
 
 ALLOWED_DEPENDENCIES = {
-    "src.core": ["src.core"],
-    "src.data": ["src.core", "src.data"],
-    "src.config": ["src.core", "src.config", "src.data"],
-    "src.features": ["src.core", "src.data", "src.features"],
-    "src.strategies": ["src.core", "src.strategies"],
-    "src.environment": [
-        "src.core",
+    "src.data": ["src.data"],
+    "src.config": ["src.config", "src.data"],
+    "src.features": ["src.data", "src.features"],
+    "src.strategies": ["src.strategies", "src.data", "src.features"],
+    "src.trading": [
         "src.config",
         "src.data",
-        "src.environment",
-        "src.engine",
-    ],
-    "src.engine": [
-        "src.core",
-        "src.config",
-        "src.data",
-        "src.environment",
+        "src.features",
         "src.strategies",
-        "src.engine",
+        "src.trading",
     ],
-    "src.experiments": ["src.core", "src.experiments"],
-    "src.evaluation": ["src.core", "src.engine", "src.evaluation"],
+    "src.experiments": [
+        "src.config",
+        "src.data",
+        "src.features",
+        "src.strategies",
+        "src.trading",
+        "src.experiments",
+    ],
+    "src.evaluation": ["src.data", "src.trading", "src.evaluation"],
 }
 
 

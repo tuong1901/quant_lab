@@ -2,7 +2,9 @@
 Market Data Exceptions (`src/data/exceptions.py`).
 """
 
-from src.core.exceptions import QuantSystemError
+class QuantSystemError(Exception):
+    """Base exception for all quantitative trading system errors."""
+    pass
 
 
 class MarketDataException(QuantSystemError):

@@ -13,7 +13,7 @@ class TestCoreClock(unittest.TestCase):
 
     def test_historical_clock_initialization_and_now(self):
         """Test HistoricalClock initialization and reading simulated now()."""
-        from src.core.clock import HistoricalClock
+        from src.trading.backtest import HistoricalClock
 
         start_dt = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         clock = HistoricalClock(start_time=start_dt)
@@ -21,7 +21,7 @@ class TestCoreClock(unittest.TestCase):
 
     def test_historical_clock_advance_to_valid(self):
         """Test advancing HistoricalClock forward in time."""
-        from src.core.clock import HistoricalClock
+        from src.trading.backtest import HistoricalClock
 
         start_dt = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         clock = HistoricalClock(start_time=start_dt)
@@ -32,8 +32,8 @@ class TestCoreClock(unittest.TestCase):
 
     def test_historical_clock_advance_backward_raises_error(self):
         """Test that attempting to advance HistoricalClock backward in time raises error."""
-        from src.core.clock import HistoricalClock
-        from src.core.exceptions import QuantSystemError
+        from src.trading.backtest import HistoricalClock
+        from src.trading.execution.exceptions import QuantSystemError
 
         start_dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         clock = HistoricalClock(start_time=start_dt)
@@ -44,7 +44,7 @@ class TestCoreClock(unittest.TestCase):
 
     def test_realtime_clock_returns_utc_now(self):
         """Test RealtimeClock returns a valid UTC timezone-aware datetime."""
-        from src.core.clock import RealtimeClock
+        from src.trading.backtest import RealtimeClock
 
         clock = RealtimeClock()
         ts = clock.now()

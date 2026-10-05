@@ -7,7 +7,7 @@ import ast
 from pathlib import Path
 import unittest
 
-from src.engine.backtest.backtest_engine import BacktestEngine
+from src.trading.backtest import BacktestEngine
 from src.strategies.strategy import Strategy
 
 

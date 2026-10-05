@@ -7,9 +7,15 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional, Union
 
-from src.core.ids import StrategyId
-from src.core.types import validate_utc_timestamp
+from src.data.dataset import BaseId
+from src.data.timeframe import validate_utc_timestamp
 from src.strategies.exceptions import InvalidSignalError
+
+
+@dataclass(frozen=True)
+class StrategyId(BaseId):
+    """[PURPOSE]: Unique identifier for a Strategy."""
+    pass
 
 
 class SignalAction(Enum):

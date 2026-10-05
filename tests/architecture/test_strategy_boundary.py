@@ -11,7 +11,7 @@ import unittest
 from src.strategies.ema import EMAStrategy
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
-from src.environment.accounting.position import PositionSide
+from src.trading.portfolio.position import PositionSide
 from datetime import datetime, timezone
 
 

@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from src.config.loader import ConfigLoader
-from src.environment.runtime.factory import EnvironmentFactory
+from src.trading.backtest import EnvironmentFactory
 from src.strategies.strategy import Strategy
 from src.strategies.context import StrategyContext
 from src.strategies.signal import Signal, SignalAction
-from src.engine.backtest.backtest_engine import BacktestEngine
-from src.environment.accounting.position import PositionSide
+from src.trading.backtest import BacktestEngine
+from src.trading.portfolio.position import PositionSide
 
 
 class TestAuditReconciliation(unittest.TestCase):

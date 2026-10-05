@@ -5,7 +5,7 @@ Unit tests for ExecutionContext operational scope (`src/environment/context.py`)
 import unittest
 from datetime import datetime, timezone
 
-from src.core.clock import HistoricalClock
+from src.trading.backtest import HistoricalClock
 from src.experiments.run import ExperimentRun
 from src.experiments.window import TimeWindow
 
@@ -26,7 +26,7 @@ class TestExecutionContext(unittest.TestCase):
 
     def test_execution_context_creation_and_immutability(self):
         """Test creating ExecutionContext and verifying frozen immutability constraint."""
-        from src.environment.runtime.context import ExecutionContext
+        from src.trading.backtest import ExecutionContext
 
         ctx = ExecutionContext(
             clock=self.clock,

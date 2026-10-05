@@ -5,7 +5,7 @@ Unit tests for StrategyContext read-only container (`src/strategies/context.py`)
 import unittest
 from datetime import datetime, timezone
 
-from src.environment.accounting.position import PositionSide
+from src.trading.portfolio.position import PositionSide
 
 
 class TestStrategyContext(unittest.TestCase):
