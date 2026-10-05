@@ -1,6 +1,11 @@
 # Project Status
 
 ## Done
+- REQ: `docs/requirements/REQ-20261005-portfolio-contract-tests.md` (P0 portfolio contracts passed: 14 test methods covering all 18 contract IDs).
+- Portfolio lifecycle/accounting is covered for open/add/reduce/close/reversal, PnL signs, fees, MTM, equity reconciliation, duplicate fills, and the golden lifecycle; no production defect was found.
+- REQ: `docs/requirements/REQ-20261005-execution-contract-tests.md` (targeted execution contract suite passed: 9 tests).
+- Execution engine now separates order eligibility/reference pricing from market slippage and fee calculation. Market fills remain T+1 Open (fallback Close); touched limit orders fill exactly at their submitted limit price and cannot double fill.
+- Execution T+1 demo backtest passed: order at 10:15 UTC filled once at the 10:30 UTC open (105.00), final equity 10,004.96. Legacy timing regression tests are blocked before execution by a legacy dataset storage-format value incompatible with the strict data contract.
 - REQ: `docs/requirements/REQ-20261005-data-contract-strict-pipeline.md`.
 - Strict data contract now enforces canonical UTC timestamps, `[start, end)`, full market identity, canonical SHA-256, OHLCV bounds, and strict no-gap loading.
 - Canonicalization now aligns each non-initial candle open to the preceding close before hash/validation; invalid corrected OHLC ranges remain rejected.

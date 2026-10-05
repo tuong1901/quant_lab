@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.data.timeframe import validate_utc_timestamp
-from src.trading.execution.order import Order, OrderStatus
+from src.trading.execution.order import Order, OrderStatus, OrderType
 from src.trading.execution.fill import Fill
 from src.trading.execution.fill_model import FillModel, OHLCFillModel
 from src.trading.execution.slippage import SlippageModel, FixedSlippageModel
@@ -93,10 +93,16 @@ class ExecutionEngine:
         results: List[ExecutionResult] = []
         filled_order_ids = []
 
-        base_price = market_data.get("open", market_data.get("close", 0.0))
-
         for order_id, order in list(self.pending_orders.items()):
-            exec_price = self.slippage_model.calculate_execution_price(order, base_price)
+            reference_price = self.fill_model.determine_reference_price(order, market_data)
+            if reference_price is None:
+                continue
+
+            # A limit order promises the submitted limit price in this engine.
+            # Only market orders pay modeled adverse slippage around their reference price.
+            exec_price = reference_price
+            if order.order_type == OrderType.MARKET:
+                exec_price = self.slippage_model.calculate_execution_price(order, reference_price)
             fee = self.fee_model.calculate_fee(order.order_type, order.quantity * exec_price)
 
             fill = self.fill_model.simulate_fill(

@@ -16,7 +16,9 @@ class SlippageModel(ABC):
 class FixedSlippageModel(SlippageModel):
     """[PURPOSE]: Fixed bps slippage calculation."""
     def __init__(self, slippage_bps: float = 0.0):
-        self.slippage_bps = max(0.0, slippage_bps)
+        if slippage_bps < 0:
+            raise ValueError("slippage_bps must be non-negative")
+        self.slippage_bps = slippage_bps
 
     def calculate_execution_price(self, order: Order, base_price: float, atr_value: float = 0.0) -> float:
         slip_pct = self.slippage_bps / 10000.0
@@ -29,7 +31,9 @@ class FixedSlippageModel(SlippageModel):
 class VolatilitySlippageModel(SlippageModel):
     """[PURPOSE]: Volatility-based slippage calculation using ATR multiplier."""
     def __init__(self, atr_factor: float = 0.05):
-        self.atr_factor = max(0.0, atr_factor)
+        if atr_factor < 0:
+            raise ValueError("atr_factor must be non-negative")
+        self.atr_factor = atr_factor
 
     def calculate_execution_price(self, order: Order, base_price: float, atr_value: float = 0.0) -> float:
         slippage_dist = self.atr_factor * max(0.0, atr_value)
