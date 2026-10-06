@@ -5,8 +5,10 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Tuple
+import math
+from typing import Optional, Sequence, Tuple
 
+from src.data.timeframe import Timeframe
 from src.trading.backtest import BacktestResult
 from src.evaluation.exceptions import InvalidEvaluationError
 
@@ -106,4 +108,122 @@ def calculate_basic_metrics(result: BacktestResult) -> BasicMetrics:
         trade_count=trade_count,
         win_rate=win_rate,
         equity_curve=equity_curve,
+    )
+
+
+@dataclass(frozen=True)
+class EquityRiskMetrics:
+    """
+    [PURPOSE]: Hold performance and risk metrics derived only from a validated equity curve.
+    [DEPENDENCIES]: Produced by calculate_equity_risk_metrics.
+    [ARGS]: Initial/final equity, return, CAGR, drawdown, volatility, and risk-adjusted ratios.
+    [RETURNS]: Immutable equity-curve evaluation result.
+    [SIDE EFFECTS]: None.
+    """
+    initial_equity: float
+    final_equity: float
+    net_pnl: float
+    return_pct: float
+    cagr: float
+    max_drawdown: float
+    max_drawdown_pct: float
+    max_drawdown_duration_bars: int
+    annualized_volatility: float
+    sharpe_ratio: Optional[float]
+    sortino_ratio: Optional[float]
+    calmar_ratio: Optional[float]
+
+
+def periods_per_year(timeframe: Timeframe) -> int:
+    """
+    [PURPOSE]: Return the crypto 24/7 number of bars per calendar year for one timeframe.
+    [DEPENDENCIES]: Uses Timeframe.to_seconds.
+    [ARGS]: timeframe — Candle interval used to produce the equity curve.
+    [RETURNS]: Integer bars per 365-day year.
+    [SIDE EFFECTS]: Raises InvalidEvaluationError for an invalid timeframe.
+    """
+    if not isinstance(timeframe, Timeframe):
+        raise InvalidEvaluationError(f"Expected Timeframe, got {type(timeframe)}")
+    return (365 * 24 * 60 * 60) // timeframe.to_seconds()
+
+
+def calculate_equity_risk_metrics(
+    equity_curve: Sequence[Tuple[datetime, float]],
+    timeframe: Timeframe,
+    risk_free_rate: float = 0.0,
+) -> EquityRiskMetrics:
+    """
+    [PURPOSE]: Calculate timeframe-aware performance and risk metrics from chronological equity snapshots.
+    [DEPENDENCIES]: Uses periods_per_year and InvalidEvaluationError.
+    [ARGS]: equity_curve — strictly chronological UTC equity snapshots; timeframe — bar interval; risk_free_rate — annual decimal rate.
+    [RETURNS]: EquityRiskMetrics with undefined ratios represented by None.
+    [SIDE EFFECTS]: Raises InvalidEvaluationError for invalid equity, timestamps, or risk-free rate.
+    """
+    if len(equity_curve) < 2:
+        raise InvalidEvaluationError("Equity curve requires at least two snapshots.")
+    if risk_free_rate <= -1.0:
+        raise InvalidEvaluationError("risk_free_rate must be greater than -1.0.")
+
+    timestamps = [snapshot[0] for snapshot in equity_curve]
+    equities = [float(snapshot[1]) for snapshot in equity_curve]
+    if any(equity <= 0.0 or not math.isfinite(equity) for equity in equities):
+        raise InvalidEvaluationError("Equity values must be finite and strictly positive.")
+    if any(current <= previous for previous, current in zip(timestamps, timestamps[1:])):
+        raise InvalidEvaluationError("Equity timestamps must be strictly increasing.")
+
+    initial_equity = equities[0]
+    final_equity = equities[-1]
+    elapsed_seconds = (timestamps[-1] - timestamps[0]).total_seconds()
+    if elapsed_seconds <= 0.0:
+        raise InvalidEvaluationError("Equity curve duration must be strictly positive.")
+
+    bars_per_year = periods_per_year(timeframe)
+    annualization = math.sqrt(bars_per_year)
+    periodic_risk_free = (1.0 + risk_free_rate) ** (1.0 / bars_per_year) - 1.0
+    returns = [current / previous - 1.0 for previous, current in zip(equities, equities[1:])]
+    excess_returns = [value - periodic_risk_free for value in returns]
+    mean_excess = sum(excess_returns) / len(excess_returns)
+    return_mean = sum(returns) / len(returns)
+    return_std = math.sqrt(sum((value - return_mean) ** 2 for value in returns) / len(returns))
+    annualized_volatility = return_std * annualization
+    sharpe_ratio = mean_excess / return_std * annualization if return_std > 0.0 else None
+
+    downside_deviation = math.sqrt(
+        sum(min(value, 0.0) ** 2 for value in excess_returns) / len(excess_returns)
+    )
+    sortino_ratio = mean_excess / downside_deviation * annualization if downside_deviation > 0.0 else None
+
+    peak_equity = equities[0]
+    peak_index = 0
+    max_drawdown = 0.0
+    max_drawdown_pct = 0.0
+    max_drawdown_duration_bars = 0
+    for index, equity in enumerate(equities):
+        if equity >= peak_equity:
+            peak_equity = equity
+            peak_index = index
+            continue
+        drawdown = peak_equity - equity
+        drawdown_pct = drawdown / peak_equity
+        max_drawdown = max(max_drawdown, drawdown)
+        max_drawdown_pct = max(max_drawdown_pct, drawdown_pct)
+        max_drawdown_duration_bars = max(max_drawdown_duration_bars, index - peak_index)
+
+    years = elapsed_seconds / (365.0 * 24.0 * 60.0 * 60.0)
+    cagr = (final_equity / initial_equity) ** (1.0 / years) - 1.0
+    calmar_ratio = cagr / max_drawdown_pct if max_drawdown_pct > 0.0 else None
+
+    return EquityRiskMetrics(
+        initial_equity=initial_equity,
+        final_equity=final_equity,
+        net_pnl=final_equity - initial_equity,
+        return_pct=(final_equity / initial_equity - 1.0) * 100.0,
+        cagr=cagr,
+        max_drawdown=max_drawdown,
+        max_drawdown_pct=max_drawdown_pct,
+        max_drawdown_duration_bars=max_drawdown_duration_bars,
+        annualized_volatility=annualized_volatility,
+        sharpe_ratio=sharpe_ratio,
+        sortino_ratio=sortino_ratio,
+        calmar_ratio=calmar_ratio,
     )

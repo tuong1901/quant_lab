@@ -21,7 +21,17 @@ def enforce_open_close_continuity(frame: pd.DataFrame) -> pd.DataFrame:
     """
     cleaned = frame.copy()
     if len(cleaned) > 1:
-        cleaned.loc[cleaned.index[1:], "open"] = cleaned["close"].iloc[:-1].to_numpy()
+        candidate_index = cleaned.index[1:]
+        original_opens = cleaned.loc[candidate_index, "open"].to_numpy(copy=True)
+        previous_closes = cleaned["close"].iloc[:-1].to_numpy()
+        highs = cleaned.loc[candidate_index, "high"].to_numpy()
+        discontinuous = original_opens != previous_closes
+
+        corrected_opens = original_opens.copy()
+        corrected_opens[discontinuous] = previous_closes[discontinuous]
+        exceeds_high = discontinuous & (corrected_opens > highs)
+        corrected_opens[exceeds_high] = highs[exceeds_high]
+        cleaned.loc[candidate_index, "open"] = corrected_opens
     return cleaned
 
 

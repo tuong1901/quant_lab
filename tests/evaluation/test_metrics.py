@@ -117,7 +117,7 @@ class TestBasicMetrics(unittest.TestCase):
             dataset_id="btcusdt_15m",
             initial_capital=0.0,
             bars_processed=0,
-            final_timestamp=None,
+            final_timestamp=self.t1,
             signals=(),
             orders=(),
             fills=(),

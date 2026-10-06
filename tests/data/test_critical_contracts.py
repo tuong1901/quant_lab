@@ -88,11 +88,22 @@ class TestCriticalDataContract(unittest.TestCase):
         self.assertEqual(canonical.loc[1, "open"], canonical.loc[0, "close"])
         self.assertTrue((canonical["open"].iloc[1:].to_numpy() == canonical["close"].iloc[:-1].to_numpy()).all())
 
-    def test_loader_rejects_cleaned_open_outside_candle_range(self) -> None:
+    def test_cleaned_open_is_clamped_to_existing_high_without_mutating_high(self) -> None:
         unaligned = self.frame.copy()
         unaligned.loc[0, "close"] = 200.0
-        with self.assertRaises(DataValidationError):
-            DatasetLoader().load(self._dataset_for(unaligned))
+        unaligned.loc[0, "high"] = 201.0
+        original_high = unaligned.loc[1, "high"]
+        canonical = canonicalize_ohlcv(unaligned)
+        loaded = DatasetLoader().load(self._dataset_for(unaligned))
+
+        self.assertEqual(canonical.loc[1, "open"], original_high)
+        self.assertEqual(canonical.loc[1, "high"], original_high)
+        self.assertEqual(loaded.df.loc[1, "open"], original_high)
+
+    def test_already_continuous_candle_is_not_changed(self) -> None:
+        canonical = canonicalize_ohlcv(self.frame)
+        self.assertEqual(canonical.loc[1, "open"], self.frame.loc[1, "open"])
+        self.assertEqual(canonical.loc[1, "high"], self.frame.loc[1, "high"])
 
     def test_loader_accepts_valid_dataset(self) -> None:
         data = DatasetLoader().load(self._dataset_for(self.frame))
