@@ -1,5 +1,7 @@
 # Reverse Engineering VIP Multi-Trend Indicator & Pipeline Quant Lab
 
+> Current runnable configuration: `config/backtest.yaml` and strict dataset descriptors under `config/datasets/`. The former legacy WFO/pipeline YAML set was retired on 2026-10-06.
+
 Dự án nghiên cứu, tái tạo (reverse-engineer) thuật toán chỉ báo đa xu hướng (VIP Trend Indicator) và xây dựng **Pipeline Quant Lab** hoàn chỉnh cho BTCUSDT M15 theo mô hình **Single Source of Truth (SSOT)** và **Architecture Guardrails**.
 
 ---

@@ -134,6 +134,9 @@ class TestLookAheadExecutionTiming(unittest.TestCase):
         # Fill 2 for Reversal order (created at t2) executes at t3
         self.assertEqual(res.fills[1].timestamp, t3)
         self.assertEqual(res.fills[1].quantity, 2.0)
+        self.assertEqual(len(res.closed_trades), 1)
+        self.assertEqual(res.closed_trades[0].exit_timestamp, t3)
+        self.assertEqual(res.closed_trades[0].quantity, 1.0)
 
     def test_end_of_dataset_unfilled_order_behavior(self):
         """[Spec Section 6]: Order generated on final available bar (Bar N) remains unfilled."""

@@ -8,8 +8,10 @@ from src.config.runner import BacktestRunnerConfig, load_backtest_runner_config
 from src.data.dataset import Dataset
 from src.data.loader import DatasetLoader
 from src.evaluation import AccountingReconciliation, BasicMetrics, EquityRiskMetrics, calculate_accounting_reconciliation, calculate_basic_metrics, calculate_equity_risk_metrics
+from src.features.indicators import calculate_causal_atr
 from src.strategies.ema import EMAStrategy
 from src.trading.backtest import BacktestEngine, BacktestResult
+from src.trading.execution import ExecutionEngine, FixedSlippageModel, PercentageFeeModel
 from src.trading.portfolio import Portfolio
 from src.trading.portfolio.exceptions import PortfolioException
 
@@ -54,6 +56,7 @@ def add_ema_features(frame: pd.DataFrame, fast_period: int, slow_period: int) ->
     featured = frame.copy()
     featured[f"ema{fast_period}"] = featured["close"].ewm(span=fast_period, adjust=False).mean()
     featured[f"ema{slow_period}"] = featured["close"].ewm(span=slow_period, adjust=False).mean()
+    featured["atr"] = calculate_causal_atr(featured)
     return featured
 
 
@@ -68,10 +71,23 @@ def run_strict_backtest(config: BacktestRunnerConfig) -> StrictBacktestEvaluatio
     dataset = Dataset.from_yaml(config.dataset_definition)
     data = DatasetLoader().load(dataset)
     frame = data.df.iloc[:config.bar_limit].copy() if config.bar_limit else data.df
-    portfolio = Portfolio()
+    portfolio = Portfolio(initial_capital=config.initial_capital, leverage=config.leverage)
+    execution = ExecutionEngine(
+        slippage_model=FixedSlippageModel(config.slippage_bps),
+        fee_model=PercentageFeeModel(config.maker_fee_bps, config.taker_fee_bps),
+    )
     engine = BacktestEngine(
         strategy=EMAStrategy(config.fast_period, config.slow_period),
         portfolio=portfolio,
+        broker=execution,
+        default_order_quantity=config.fixed_quantity,
+        sizing_mode=config.sizing_mode,
+        risk_per_trade_pct=config.risk_per_trade_pct,
+        max_position_size=config.max_position_size,
+        max_notional=config.max_notional,
+        allow_short=config.allow_short,
+        atr_multiplier=config.atr_multiplier,
+        reward_to_risk=config.reward_to_risk,
     )
     try:
         result = engine.run(add_ema_features(frame, config.fast_period, config.slow_period))

@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 
 from src.data.timeframe import validate_utc_timestamp
-from src.trading.execution.order import Order, OrderSide, OrderType, OrderStatus, OrderId
+from src.trading.execution.order import Order, OrderSide, OrderType, OrderStatus, OrderId, FillId
 from src.trading.execution.fill import Fill
 from src.trading.execution.broker import ExecutionEngine
 from src.trading.execution.fees import PercentageFeeModel
 from src.trading.execution.slippage import FixedSlippageModel
 from src.trading.portfolio.portfolio import Portfolio, PortfolioState
+from src.trading.portfolio.trades import ClosedTrade
 from src.trading.portfolio.position import PositionSide
 from src.trading.portfolio.risk import calculate_risk_position_size
 from src.strategies.context import StrategyContext
@@ -413,7 +414,7 @@ class BacktestResult:
     """
     [PURPOSE]: Immutable snapshot containing complete execution history of a backtest run.
     [DEPENDENCIES]: Order, Fill, Signal, PortfolioState.
-    [ARGS]: run_id, strategy_id, dataset_id, initial_capital, bars_processed, final_timestamp, signals, orders, fills, portfolio_history, final_portfolio.
+    [ARGS]: run_id, strategy_id, dataset_id, initial_capital, bars_processed, final_timestamp, signals, orders, fills, portfolio_history, final_portfolio, closed_trades.
     [RETURNS]: BacktestResult instance.
     [SIDE EFFECTS]: Validates UTC final_timestamp.
     """
@@ -428,6 +429,7 @@ class BacktestResult:
     fills: Tuple[Fill, ...]
     portfolio_history: Tuple[PortfolioState, ...]
     final_portfolio: PortfolioState
+    closed_trades: Tuple[ClosedTrade, ...] = ()
 
     def __post_init__(self) -> None:
         validate_utc_timestamp(self.final_timestamp)
@@ -639,6 +641,13 @@ class BacktestEngine:
         portfolio: Optional[Portfolio] = None,
         broker: Optional[Any] = None,
         clock: Optional[Clock] = None,
+        sizing_mode: str = "fixed_quantity",
+        risk_per_trade_pct: float = 0.0,
+        max_position_size: float = float("inf"),
+        max_notional: float = float("inf"),
+        allow_short: bool = True,
+        atr_multiplier: Optional[float] = None,
+        reward_to_risk: Optional[float] = None,
         **kwargs,
     ):
         if environment is not None:
@@ -665,7 +674,75 @@ class BacktestEngine:
             context = DefaultContext()
         self.context = context
         self.default_order_quantity = default_order_quantity
+        self.sizing_mode = sizing_mode
+        self.risk_per_trade_pct = risk_per_trade_pct
+        self.max_position_size = max_position_size
+        self.max_notional = max_notional
+        self.allow_short = allow_short
+        self.atr_multiplier = atr_multiplier
+        self.reward_to_risk = reward_to_risk
+        self._exit_levels: Dict[str, Tuple[float, float]] = {}
         self.state = BacktestState()
+
+    def _entry_quantity(self, equity: float, price: float, atr: float) -> float:
+        """
+        [PURPOSE]: Calculate a capped entry quantity from configured fixed or stop-based risk sizing.
+        [DEPENDENCIES]: Uses calculate_risk_position_size and strict runner risk settings.
+        [ARGS]: equity — current account equity; price — current planning price; atr — causal ATR at signal time.
+        [RETURNS]: Positive quantity or zero when the risk configuration cannot create a valid order.
+        [SIDE EFFECTS]: None.
+        """
+        if self.sizing_mode == "risk_per_trade":
+            if self.atr_multiplier is None or atr <= 0.0:
+                return 0.0
+            stop_price = price - (atr * self.atr_multiplier)
+            quantity = calculate_risk_position_size(equity, self.risk_per_trade_pct, price, stop_price)
+        else:
+            quantity = self.default_order_quantity
+        return max(0.0, min(quantity, self.max_position_size, self.max_notional / price))
+
+    def _set_exit_levels(self, fill: Fill, atr: float) -> None:
+        """
+        [PURPOSE]: Set fixed stop-loss and take-profit prices after an entry or reversal fill.
+        [DEPENDENCIES]: Called by run after Portfolio applies an opening fill.
+        [ARGS]: fill — actual entry fill; atr — causal ATR available at its fill bar.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Mutates active exit levels for the filled symbol.
+        """
+        if self.atr_multiplier is None or self.reward_to_risk is None or atr <= 0.0:
+            return
+        risk_distance = atr * self.atr_multiplier
+        if fill.side == OrderSide.BUY:
+            self._exit_levels[fill.symbol] = (fill.price - risk_distance, fill.price + risk_distance * self.reward_to_risk)
+        else:
+            self._exit_levels[fill.symbol] = (fill.price + risk_distance, fill.price - risk_distance * self.reward_to_risk)
+
+    def _apply_bar_exit(self, portfolio: Portfolio, symbol: str, bar: Dict[str, float], timestamp: datetime) -> Optional[Fill]:
+        """
+        [PURPOSE]: Close an active position when its configured stop or target is touched on this bar.
+        [DEPENDENCIES]: Uses Portfolio.apply_fill and execution fee model; called before strategy evaluation.
+        [ARGS]: portfolio, symbol, OHLC bar, timestamp.
+        [RETURNS]: Exit Fill or None when no configured exit is touched.
+        [SIDE EFFECTS]: Mutates Portfolio and removes consumed exit levels; stop wins when both exits are touched.
+        """
+        position = portfolio.positions.get(symbol)
+        levels = self._exit_levels.get(symbol)
+        if position is None or levels is None:
+            return None
+        stop_price, target_price = levels
+        if position.side == PositionSide.LONG:
+            exit_price = stop_price if bar["low"] <= stop_price else target_price if bar["high"] >= target_price else None
+            exit_side = OrderSide.SELL
+        else:
+            exit_price = stop_price if bar["high"] >= stop_price else target_price if bar["low"] <= target_price else None
+            exit_side = OrderSide.BUY
+        if exit_price is None:
+            return None
+        fee = self.execution.fee_model.calculate_fee(OrderType.MARKET, position.quantity * exit_price)
+        fill = Fill(str(FillId.generate()), f"exit:{symbol}:{timestamp.isoformat()}", symbol, exit_side, position.quantity, exit_price, fee, timestamp)
+        portfolio.apply_fill(fill)
+        del self._exit_levels[symbol]
+        return fill
 
     def _get_run_id(self) -> str:
         if hasattr(self.context, "run"):
@@ -736,8 +813,16 @@ class BacktestEngine:
             exec_results = exec_engine.process_market_data(market_data=bar_dict, timestamp=ts)
             for res in exec_results:
                 for f in res.fills:
+                    prior_position = portfolio.positions.get(f.symbol)
                     fills.append(f)
                     p_state = portfolio.apply_fill(f)
+                    opened_or_reversed = prior_position is None or prior_position.side != p_state.positions.get(f.symbol, prior_position).side
+                    if opened_or_reversed and f.symbol in p_state.positions:
+                        self._set_exit_levels(f, float(row.get("atr", 0.0)))
+
+            exit_fill = self._apply_bar_exit(portfolio, run_id, bar_dict, ts)
+            if exit_fill is not None:
+                fills.append(exit_fill)
 
             # 2. Update mark-to-market at bar Close T
             p_state = portfolio.mark_to_market(timestamp=ts, mark_prices={run_id: bar_dict["close"]})
@@ -767,18 +852,21 @@ class BacktestEngine:
 
             if target_side == SignalAction.LONG:
                 if curr_pos is None:
+                    entry_quantity = self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
+                    if entry_quantity <= 0.0:
+                        continue
                     ord_obj = Order(
                         order_id=OrderId.generate(),
                         symbol=run_id,
                         side=OrderSide.BUY,
                         order_type=OrderType.MARKET,
-                        quantity=self.default_order_quantity,
+                        quantity=entry_quantity,
                         created_at=ts,
                     )
                     orders.append(ord_obj)
                     exec_engine.submit_order(ord_obj)
                 elif curr_pos.side == PositionSide.SHORT:
-                    reversal_qty = curr_pos.quantity + self.default_order_quantity
+                    reversal_qty = curr_pos.quantity + self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
                     ord_obj = Order(
                         order_id=OrderId.generate(),
                         symbol=run_id,
@@ -790,19 +878,24 @@ class BacktestEngine:
                     orders.append(ord_obj)
                     exec_engine.submit_order(ord_obj)
             elif target_side == SignalAction.SHORT:
+                if not self.allow_short:
+                    continue
                 if curr_pos is None:
+                    entry_quantity = self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
+                    if entry_quantity <= 0.0:
+                        continue
                     ord_obj = Order(
                         order_id=OrderId.generate(),
                         symbol=run_id,
                         side=OrderSide.SELL,
                         order_type=OrderType.MARKET,
-                        quantity=self.default_order_quantity,
+                        quantity=entry_quantity,
                         created_at=ts,
                     )
                     orders.append(ord_obj)
                     exec_engine.submit_order(ord_obj)
                 elif curr_pos.side == PositionSide.LONG:
-                    reversal_qty = curr_pos.quantity + self.default_order_quantity
+                    reversal_qty = curr_pos.quantity + self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
                     ord_obj = Order(
                         order_id=OrderId.generate(),
                         symbol=run_id,
@@ -828,4 +921,5 @@ class BacktestEngine:
             fills=tuple(fills),
             portfolio_history=tuple(portfolio_states),
             final_portfolio=portfolio_states[-1] if portfolio_states else portfolio.get_state(final_ts),
+            closed_trades=portfolio.closed_trades,
         )

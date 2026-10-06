@@ -1,6 +1,8 @@
 # Project Status
 
 ## Done
+- REQ: `docs/requirements/REQ-20261006-remove-legacy-config-yaml.md` (legacy YAML retired). Removed the ten user-approved files and `tests/config/test_loader.py`; strict `backtest.yaml` and `config/datasets/` descriptors remain.
+- REQ: `docs/requirements/REQ-20261006-strict-backtest-risk-configuration.md` (in progress). Strict `backtest.yaml` now configures capital/leverage, risk sizing, ATR stop/2R target, fees, and slippage. Parser check and 20 portfolio/evaluation regressions pass; real-data strict E2E remains pending data-read approval.
 - REQ: `docs/requirements/REQ-20261006-strict-backtest-runner.md` (strict CLI runner completed; 3 runner/data E2E tests passed). `run_backtest.py` now follows Dataset YAML → Loader → EMA features → EMAStrategy → BacktestEngine → unified evaluation; legacy WFO remains only in `run_pipeline.py`.
 - REQ: `docs/requirements/REQ-20261006-evaluation-accounting-reconciliation.md` (completed). Strict runner output reconciles initial capital, realized PnL, fees, funding, account equity, unrealized PnL, final equity, and residual.
 - REQ: `docs/requirements/REQ-20261006-evaluation-kernel-and-trade-ledger.md` (Phase A completed: 13 unit tests and strict E2E passed). Evaluation now exposes timeframe-aware CAGR, max drawdown, volatility, Sharpe, Sortino, and Calmar from equity snapshots; trade-ledger metrics remain future work.

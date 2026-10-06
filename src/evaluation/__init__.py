@@ -8,9 +8,11 @@ from src.evaluation.metrics import (
     BasicMetrics,
     AccountingReconciliation,
     EquityRiskMetrics,
+    TradeMetrics,
     calculate_accounting_reconciliation,
     calculate_basic_metrics,
     calculate_equity_risk_metrics,
+    calculate_trade_metrics,
     periods_per_year,
 )
 
@@ -20,8 +22,10 @@ __all__ = [
     "BasicMetrics",
     "AccountingReconciliation",
     "EquityRiskMetrics",
+    "TradeMetrics",
     "calculate_accounting_reconciliation",
     "calculate_basic_metrics",
     "calculate_equity_risk_metrics",
+    "calculate_trade_metrics",
     "periods_per_year",
 ]

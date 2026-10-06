@@ -43,6 +43,12 @@ Centralized configuration layer for Quant Lab responsible for parsing YAML decla
 
 ---
 
+## Strict backtest YAML
+
+`python run_backtest.py` uses `config/backtest.yaml` as its production configuration. Its `account`, `risk`, `exit`, and `execution` sections control capital/leverage, fixed or percent-risk sizing, ATR stop, fixed-R target, fees, and slippage. If one candle touches both exits, the strict contract applies `stop_first`.
+
+The legacy YAML research path has been retired. The maintained configuration contract is `config/backtest.yaml` plus a descriptor in `config/datasets/`.
+
 ## Automated Test Suite
 
 Chạy bộ kiểm thử tự động tại `tests/config/`:

@@ -77,10 +77,12 @@ class TestBacktestResult(unittest.TestCase):
         self.assertEqual(len(res.orders), 1)
         self.assertEqual(len(res.fills), 1)
         self.assertEqual(len(res.portfolio_history), 1)
+        self.assertEqual(res.closed_trades, ())
 
         # Test tuple immutability
         self.assertIsInstance(res.signals, tuple)
         self.assertIsInstance(res.fills, tuple)
+        self.assertIsInstance(res.closed_trades, tuple)
         with self.assertRaises(AttributeError):
             res.bars_processed = 200
 

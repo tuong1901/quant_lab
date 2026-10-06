@@ -9,6 +9,8 @@ from src.strategies.signal import Signal, SignalAction
 from src.trading.execution.order import Order, OrderSide, OrderType
 from src.trading.execution.fill import Fill
 from src.trading.portfolio.portfolio import PortfolioState
+from src.trading.portfolio.position import PositionSide
+from src.trading.portfolio.trades import ClosedTrade
 from src.trading.backtest import BacktestResult
 
 
@@ -71,6 +73,10 @@ class TestBasicMetrics(unittest.TestCase):
             fills=(),
             portfolio_history=(p1, p2, p3),
             final_portfolio=p3,
+            closed_trades=(
+                ClosedTrade("trade-1", "BTCUSDT", PositionSide.LONG, 1.0, self.t1, self.t2, 100.0, 600.0, 500.0, 5.0, 5.0),
+                ClosedTrade("trade-2", "BTCUSDT", PositionSide.LONG, 1.0, self.t2, self.t3, 600.0, 400.0, -200.0, 5.0, 5.0),
+            ),
         )
 
     def test_profitable_metrics_calculation(self):
