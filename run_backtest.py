@@ -1,261 +1,205 @@
-"""
-CLI Entry Point for Pipeline Quant Lab: Fibo Zone-Registry + Projection + ATR Ratchet (M15 BTCUSDT).
-Orchestrates config loading, causal feature generation, single-window speed benchmarking,
-Purged Walk-Forward Optimization, dual-fill execution simulation, reporting artifact export,
-and Golden Behavioral Baseline verification.
-"""
+"""Strict production backtest CLI: dataset to strategy, execution, and evaluation."""
 
-import os
-import sys
-import time
-import json
 import argparse
-import yaml
-import numpy as np
+from dataclasses import dataclass
+from typing import Sequence
+
 import pandas as pd
 
 from src.data.dataset import Dataset
 from src.data.loader import DatasetLoader
-from src.data.strict import load_m15_ohlcv
-from src.features.indicators import calculate_causal_atr, calculate_causal_swings
-from src.experiments.splitter import PurgedWFOSplitter
-from src.experiments.optimizer import run_optuna_study
-from src.trading.backtest import run_trade_simulation
-from src.evaluation.alpha_decay import (
-    evaluate_time_horizons,
-    evaluate_trade_count_horizons,
-    compute_alpha_decay_summary,
+from src.evaluation import (
+    AccountingReconciliation,
+    BasicMetrics,
+    EquityRiskMetrics,
+    calculate_accounting_reconciliation,
+    calculate_basic_metrics,
+    calculate_equity_risk_metrics,
 )
-from src.evaluation.reporting import generate_pipeline_report
+from src.strategies.ema import EMAStrategy
+from src.trading.backtest import BacktestEngine, BacktestResult
 
 
-def parse_args():
+@dataclass(frozen=True)
+class StrictBacktestEvaluation:
     """
-    [PURPOSE]: Parse command-line arguments for pipeline execution.
+    [PURPOSE]: Group the result and all read-only evaluation views from one strict backtest run.
+    [DEPENDENCIES]: Produced by run_strict_backtest.
+    [ARGS]: result — strict BacktestResult; basic, risk, accounting — evaluation views.
+    [RETURNS]: Immutable complete strict backtest outcome.
+    [SIDE EFFECTS]: None.
     """
-    parser = argparse.ArgumentParser(description="Pipeline Quant Lab: Fibo Zone-Registry + ATR Ratchet")
-    parser.add_argument('--dataset-definition', type=str, default=None, help="Path to strict Dataset YAML descriptor")
-    parser.add_argument('--benchmark-trials', type=int, default=None, help="Run single-window execution benchmark with N trials")
-    parser.add_argument('--n-trials', type=int, default=50, help="Optuna trials per WFO window")
-    parser.add_argument('--n-windows', type=int, default=3, help="Number of Purged WFO windows")
-    parser.add_argument('--reports-dir', type=str, default='reports', help="Directory to save output reports")
-    parser.add_argument('--verify-golden-baseline', type=str, default=None, help="Path to golden baseline JSON file for numerical verification")
-    return parser.parse_args()
+    result: BacktestResult
+    basic: BasicMetrics
+    risk: EquityRiskMetrics
+    accounting: AccountingReconciliation
 
 
-def load_all_configs():
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """
-    [PURPOSE]: Load zones.yaml, fixed_params.yaml, and search_space.yaml into memory.
+    [PURPOSE]: Parse strict backtest CLI options.
+    [DEPENDENCIES]: argparse.
+    [ARGS]: argv — Optional argument sequence for tests; None reads process arguments.
+    [RETURNS]: Parsed CLI namespace.
+    [SIDE EFFECTS]: Exits with argparse usage error for invalid arguments.
     """
-    with open('config/zones.yaml', 'r', encoding='utf-8') as f:
-        zones_cfg = yaml.safe_load(f)
-    with open('config/fixed_params.yaml', 'r', encoding='utf-8') as f:
-        fixed_cfg = yaml.safe_load(f)
-    with open('config/search_space.yaml', 'r', encoding='utf-8') as f:
-        space_cfg = yaml.safe_load(f)
-        
-    return zones_cfg, fixed_cfg, space_cfg
+    parser = argparse.ArgumentParser(
+        description="Strict Dataset -> EMA Strategy -> BacktestEngine -> Evaluation runner"
+    )
+    parser.add_argument(
+        "--dataset-definition",
+        required=True,
+        help="Path to a strict Dataset YAML descriptor.",
+    )
+    parser.add_argument(
+        "--fast-period",
+        type=int,
+        default=20,
+        help="Fast EMA period for the reference EMA strategy (default: 20).",
+    )
+    parser.add_argument(
+        "--slow-period",
+        type=int,
+        default=50,
+        help="Slow EMA period for the reference EMA strategy (default: 50).",
+    )
+    parser.add_argument(
+        "--risk-free-rate",
+        type=float,
+        default=0.0,
+        help="Annual decimal risk-free rate used by Sharpe and Sortino (default: 0.0).",
+    )
+    return parser.parse_args(argv)
 
 
-def verify_golden_baseline(golden_path: str) -> bool:
+def add_ema_features(frame: pd.DataFrame, fast_period: int, slow_period: int) -> pd.DataFrame:
     """
-    [PURPOSE]: Verify that new SSOT implementation produces 100.0000% exact numerical match against golden baseline.
+    [PURPOSE]: Add the EMA feature columns required by the reference EMA strategy.
+    [DEPENDENCIES]: Called by run_strict_backtest before BacktestEngine.run.
+    [ARGS]: frame — strict canonical OHLCV DataFrame; fast_period, slow_period — positive EMA spans.
+    [RETURNS]: Copy of frame with ema{fast_period} and ema{slow_period} columns.
+    [SIDE EFFECTS]: Raises ValueError for invalid or identical EMA periods.
     """
-    if not os.path.exists(golden_path):
-        print(f"[GOLDEN VERIFICATION ERROR] File not found: {golden_path}")
-        return False
+    if fast_period <= 0 or slow_period <= 0:
+        raise ValueError("EMA periods must be strictly positive.")
+    if fast_period >= slow_period:
+        raise ValueError("fast_period must be smaller than slow_period.")
+    featured = frame.copy()
+    featured[f"ema{fast_period}"] = featured["close"].ewm(
+        span=fast_period, adjust=False
+    ).mean()
+    featured[f"ema{slow_period}"] = featured["close"].ewm(
+        span=slow_period, adjust=False
+    ).mean()
+    return featured
 
-    with open(golden_path, 'r', encoding='utf-8') as f:
-        golden_data = json.load(f)
 
-    dataset_path = golden_data['dataset']
-    print(f"[GOLDEN VERIFICATION] Loading dataset: {dataset_path}...")
-    df = load_m15_ohlcv(dataset_path)
-
-    zones_cfg, fixed_cfg, space_cfg = load_all_configs()
-    atr_period = fixed_cfg.get('atr_ratchet', {}).get('period', 14)
-    atr_series = calculate_causal_atr(df, period=atr_period)
-    swings = calculate_causal_swings(df, lookback=20)
-
-    n_bars = golden_data['bars_evaluated']
-    df_slice = df.iloc[:n_bars].copy()
-    atr_slice = atr_series[:n_bars]
-    swings_slice = (swings[0][:n_bars], swings[1][:n_bars], swings[2][:n_bars])
-
-    champion_params = golden_data['champion_params']
-
-    trades, equity = run_trade_simulation(
-        df_slice, atr_slice, swings_slice, champion_params, fixed_cfg, fill_mode='bar_close'
+def run_strict_backtest(
+    dataset_definition: str,
+    fast_period: int = 20,
+    slow_period: int = 50,
+    risk_free_rate: float = 0.0,
+) -> StrictBacktestEvaluation:
+    """
+    [PURPOSE]: Run the complete strict production path from Dataset YAML to evaluated backtest result.
+    [DEPENDENCIES]: DatasetLoader, EMAStrategy, BacktestEngine, and evaluation public API.
+    [ARGS]: dataset_definition — strict YAML path; EMA periods; annual decimal risk-free rate.
+    [RETURNS]: StrictBacktestEvaluation containing result, metrics, risk, and accounting views.
+    [SIDE EFFECTS]: Reads the YAML descriptor and its referenced market-data storage.
+    """
+    dataset = Dataset.from_yaml(dataset_definition)
+    market_data = DatasetLoader().load(dataset)
+    frame = add_ema_features(market_data.df, fast_period, slow_period)
+    strategy = EMAStrategy(fast_period=fast_period, slow_period=slow_period)
+    result = BacktestEngine(strategy=strategy).run(frame)
+    basic = calculate_basic_metrics(result)
+    risk = calculate_equity_risk_metrics(
+        basic.equity_curve,
+        timeframe=dataset.timeframe,
+        risk_free_rate=risk_free_rate,
+    )
+    accounting = calculate_accounting_reconciliation(result)
+    return StrictBacktestEvaluation(
+        result=result,
+        basic=basic,
+        risk=risk,
+        accounting=accounting,
     )
 
-    expected_trades = golden_data['trades']
-    expected_equity = golden_data['equity_curve']
 
-    if len(trades) != len(expected_trades):
-        print(f"[GOLDEN VERIFICATION FAILED] Trade count mismatch: got {len(trades)}, expected {len(expected_trades)}")
-        return False
-
-    mismatches = 0
-    for i in range(len(trades)):
-        actual = trades[i]
-        exp = expected_trades[i]
-        diff_pnl = abs(actual['net_pnl'] - exp['net_pnl'])
-        if diff_pnl > 1e-6:
-            print(f"   Mismatch at trade {i}: actual net_pnl={actual['net_pnl']:.6f}, expected={exp['net_pnl']:.6f}")
-            mismatches += 1
-
-    final_eq_diff = abs(equity[-1] - golden_data['final_equity'])
-    if final_eq_diff > 1e-6:
-        print(f"[GOLDEN VERIFICATION FAILED] Final equity mismatch: actual={equity[-1]:.6f}, expected={golden_data['final_equity']:.6f}")
-        return False
-
-    if mismatches == 0:
-        print("================================================================================")
-        print("GOLDEN BEHAVIORAL BASELINE VERIFICATION: PASSED 100.0000% NUMERICAL MATCH!")
-        print(f" - Total Trades Evaluated: {len(trades)}")
-        print(f" - Final Equity Exact Match: ${equity[-1]:.2f}")
-        print("================================================================================")
-        return True
-    else:
-        print(f"[GOLDEN VERIFICATION FAILED] Found {mismatches} trade PnL mismatches.")
-        return False
-
-
-def main():
-    args = parse_args()
-
-    if args.verify_golden_baseline:
-        success = verify_golden_baseline(args.verify_golden_baseline)
-        if not success:
-            sys.exit(1)
-        return
-
-    print("================================================================================")
-    print("PIPELINE QUANT LAB: FIBO ZONE-REGISTRY + PROJECTION + ATR RATCHET (M15 BTCUSDT)")
-    print("================================================================================")
-
-    zones_cfg, fixed_cfg, space_cfg = load_all_configs()
-    
-    if not args.dataset_definition:
-        print("--dataset-definition is required for production runs. Exiting.")
-        sys.exit(1)
-    dataset = Dataset.from_yaml(args.dataset_definition)
-    print(f"[1/5] Loading strict Dataset: {dataset.identity}...")
-    df = DatasetLoader().load(dataset).df
-    print(f"      Total Bars Loaded: {len(df):,}")
-
-    atr_period = fixed_cfg.get('atr_ratchet', {}).get('period', 14)
-    print(f"[2/5] Computing Causal Wilder RMA ATR (period={atr_period})...")
-    atr_series = calculate_causal_atr(df, period=atr_period)
-
-    print("[3/5] Computing Causal Swing Engine (lookback=20)...")
-    swings = calculate_causal_swings(df, lookback=20)
-
-    if args.benchmark_trials is not None:
-        n_bench = args.benchmark_trials
-        print(f"\n[BENCHMARK MODE] Running speed test with {n_bench} trials on first 50,000 bars...")
-        df_bench = df.iloc[:min(len(df), 50000)].copy()
-        n_b = len(df_bench)
-        atr_bench = atr_series[:n_b]
-        swings_bench = (swings[0][:n_b], swings[1][:n_b], swings[2][:n_b])
-
-        t0 = time.time()
-        best_champion = run_optuna_study(
-            df_bench, atr_bench, swings_bench, space_cfg, fixed_cfg, n_trials=n_bench
-        )
-        elapsed = time.time() - t0
-        sec_per_trial = elapsed / float(n_bench)
-        
-        print("--------------------------------------------------------------------------------")
-        print(f"BENCHMARK COMPLETED: {n_bench} trials executed in {elapsed:.2f} seconds ({sec_per_trial*1000:.1f} ms/trial)")
-        print(f"Best Champion Parameters Found: {best_champion}")
-        print("--------------------------------------------------------------------------------")
-        return
-
-    print(f"\n[4/5] Running Purged Walk-Forward Optimization ({args.n_windows} windows, {args.n_trials} trials/window)...")
-    splitter = PurgedWFOSplitter(min_is_trades=300, embargo_bars=96, n_windows=args.n_windows)
-    splits = splitter.generate_splits(len(df))
-
-    wfo_results = []
-    full_oos_trades = []
-
-    for split in splits:
-        w_idx = split['window_idx']
-        tr_s, tr_e = split['train_start'], split['train_end']
-        te_s, te_e = split['test_start'], split['test_end']
-
-        print(f"   --> Window {w_idx+1}/{len(splits)} | Train: bars {tr_s:,}-{tr_e:,} | Test: bars {te_s:,}-{te_e:,}")
-
-        df_is = df.iloc[tr_s:tr_e].copy()
-        atr_is = atr_series[tr_s:tr_e]
-        swings_is = (swings[0][tr_s:tr_e], swings[1][tr_s:tr_e], swings[2][tr_s:tr_e])
-
-        champion_params = run_optuna_study(
-            df_is, atr_is, swings_is, space_cfg, fixed_cfg, n_trials=args.n_trials
-        )
-
-        df_oos = df.iloc[te_s:te_e].copy()
-        atr_oos = atr_series[te_s:te_e]
-        swings_oos = (swings[0][te_s:te_e], swings[1][te_s:te_e], swings[2][te_s:te_e])
-
-        oos_trades, oos_eq = run_trade_simulation(
-            df_oos, atr_oos, swings_oos, champion_params, fixed_cfg, fill_mode='bar_close'
-        )
-
-        wfo_results.append({
-            'window_idx': w_idx,
-            'best_params': champion_params,
-            'oos_trades': oos_trades,
-            'oos_equity': oos_eq
-        })
-        full_oos_trades.extend(oos_trades)
-
-    print("\n[5/5] Running Dual-Fill Execution Comparison & Alpha Decay Analysis...")
-    last_params = wfo_results[-1]['best_params'] if wfo_results else {}
-    
-    wick_trades, _ = run_trade_simulation(df, atr_series, swings, last_params, fixed_cfg, fill_mode='wick_touch')
-    close_trades, _ = run_trade_simulation(df, atr_series, swings, last_params, fixed_cfg, fill_mode='bar_close')
-
-    wick_pnl = sum([t['net_pnl'] for t in wick_trades])
-    close_pnl = sum([t['net_pnl'] for t in close_trades])
-    fill_comparison = {
-        'wick_touch_trades': len(wick_trades),
-        'wick_touch_pnl': float(wick_pnl),
-        'bar_close_trades': len(close_trades),
-        'bar_close_pnl': float(close_pnl)
-    }
-
-    time_decay = evaluate_time_horizons(df, atr_series, swings, last_params, fixed_cfg)
-    trade_decay = evaluate_trade_count_horizons(full_oos_trades)
-    alpha_summary = compute_alpha_decay_summary(time_decay, trade_decay)
-
-    reports_dir = args.reports_dir
-    report = generate_pipeline_report(wfo_results, alpha_summary, fill_comparison, output_dir=reports_dir)
-
-    print("\n================================================================================")
-    print(f"LAB VERDICT: [{report['verdict']}]")
-    print("================================================================================")
-    for reason in report.get('verdict_reasons', []):
-        print(f" - {reason}")
-
-    metrics = report.get('summary_metrics', {})
-    print("\nSUMMARY PERFORMANCE METRICS:")
-    print(f" - Total OOS Trades:       {metrics.get('total_oos_trades', 0)}")
-    print(f" - Win Rate:               {metrics.get('win_rate', 0.0)*100:.2f}%")
-    print(f" - Expectancy / Trade:     ${metrics.get('expectancy_per_trade', 0.0):.2f}")
-    print(f" - Average R-Multiple:     {metrics.get('avg_r_multiple', 0.0):.2f} R")
-    print(f" - Total Net PnL:          ${metrics.get('total_net_pnl', 0.0):.2f}")
-    print(f" - Fee & Funding Drag:     {metrics.get('fee_drag_ratio', 0.0)*100:.2f}%")
-    print(f" - OOS Sharpe Ratio:       {metrics.get('oos_sharpe', 0.0):.2f}")
-    print(f" - Fill Survival Ratio:    {metrics.get('fill_survival_ratio', 0.0)*100:.2f}%")
-    print("--------------------------------------------------------------------------------")
-    print(f"REPORTS EXPORTED TO DIR: [ {os.path.abspath(reports_dir)} ]")
-    print(f" - Markdown Report:  {os.path.join(reports_dir, 'pipeline_report.md')}")
-    print(f" - JSON Report:      {os.path.join(reports_dir, 'pipeline_report.json')}")
-    print(f" - OOS Trades CSV:   {os.path.join(reports_dir, 'oos_trades.csv')}")
-    print(f" - WFO Param Log:    {os.path.join(reports_dir, 'wfo_parameter_log.csv')}")
-    print("================================================================================")
+def format_evaluation(evaluation: StrictBacktestEvaluation) -> str:
+    """
+    [PURPOSE]: Render a complete human-readable accounting, performance, and risk summary.
+    [DEPENDENCIES]: Reads StrictBacktestEvaluation only.
+    [ARGS]: evaluation — Completed strict backtest outcome.
+    [RETURNS]: Multi-line report string suitable for CLI output.
+    [SIDE EFFECTS]: None.
+    """
+    basic = evaluation.basic
+    risk = evaluation.risk
+    accounting = evaluation.accounting
+    return "\n".join(
+        [
+            "STRICT BACKTEST EVALUATION",
+            "=" * 72,
+            f"Bars processed:         {evaluation.result.bars_processed}",
+            f"Signals / orders / fills:{len(evaluation.result.signals)} / {len(evaluation.result.orders)} / {len(evaluation.result.fills)}",
+            "",
+            "ACCOUNTING RECONCILIATION",
+            f"Initial capital:         ${accounting.initial_capital:,.2f}",
+            f"Realized PnL:          {accounting.realized_pnl:+,.2f}",
+            f"Fees paid:              -${accounting.total_fees:,.2f}",
+            f"Funding paid:           -${accounting.funding_paid:,.2f}",
+            f"Account equity:          ${accounting.account_equity:,.2f}",
+            f"Unrealized PnL:        {accounting.unrealized_pnl:+,.2f}",
+            f"Final equity:            ${accounting.final_equity:,.2f}",
+            f"Reconciliation residual: {accounting.residual:+.10f}",
+            "",
+            "PERFORMANCE",
+            f"Net PnL:               {basic.net_pnl:+,.2f}",
+            f"Return:                {basic.return_pct:+.4f}%",
+            f"Realized trade events:  {basic.trade_count}",
+            f"Win rate:               {basic.win_rate:.2f}%",
+            "",
+            "RISK",
+            f"Max drawdown:           ${risk.max_drawdown:,.2f} ({risk.max_drawdown_pct:.2%})",
+            f"Drawdown duration:      {risk.max_drawdown_duration_bars} bars",
+            f"Annualized volatility:  {risk.annualized_volatility:.4f}",
+            f"Sharpe / Sortino:       {_format_ratio(risk.sharpe_ratio)} / {_format_ratio(risk.sortino_ratio)}",
+            f"CAGR / Calmar:          {risk.cagr:.4%} / {_format_ratio(risk.calmar_ratio)}",
+        ]
+    )
 
 
-if __name__ == '__main__':
-    main()
+def _format_ratio(value: float | None) -> str:
+    """
+    [PURPOSE]: Format defined and undefined risk-adjusted ratios consistently for CLI output.
+    [DEPENDENCIES]: Called by format_evaluation.
+    [ARGS]: value — Ratio or None when mathematically undefined.
+    [RETURNS]: Fixed-precision number or N/A.
+    [SIDE EFFECTS]: None.
+    """
+    return "N/A" if value is None else f"{value:.4f}"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """
+    [PURPOSE]: Execute the strict backtest CLI and print its complete evaluation.
+    [DEPENDENCIES]: parse_args, run_strict_backtest, format_evaluation.
+    [ARGS]: argv — Optional test argument sequence.
+    [RETURNS]: Process status code zero after a successful run.
+    [SIDE EFFECTS]: Reads dataset YAML and market-data storage; writes the report to stdout.
+    """
+    args = parse_args(argv)
+    evaluation = run_strict_backtest(
+        dataset_definition=args.dataset_definition,
+        fast_period=args.fast_period,
+        slow_period=args.slow_period,
+        risk_free_rate=args.risk_free_rate,
+    )
+    print(format_evaluation(evaluation))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

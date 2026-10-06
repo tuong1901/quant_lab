@@ -134,6 +134,57 @@ class EquityRiskMetrics:
     calmar_ratio: Optional[float]
 
 
+@dataclass(frozen=True)
+class AccountingReconciliation:
+    """
+    [PURPOSE]: Explain how realized PnL, costs, and open-position PnL produce final equity.
+    [DEPENDENCIES]: Produced by calculate_accounting_reconciliation from BacktestResult.
+    [ARGS]: Capital, realized/unrealized PnL, fees, funding, account equity, final equity, residual.
+    [RETURNS]: Immutable accounting breakdown for one completed backtest.
+    [SIDE EFFECTS]: None.
+    """
+    initial_capital: float
+    realized_pnl: float
+    total_fees: float
+    funding_paid: float
+    account_equity: float
+    unrealized_pnl: float
+    final_equity: float
+    residual: float
+
+
+def calculate_accounting_reconciliation(result: BacktestResult) -> AccountingReconciliation:
+    """
+    [PURPOSE]: Reconcile final backtest equity to Portfolio realized PnL, costs, and open-position PnL.
+    [DEPENDENCIES]: Reads immutable BacktestResult and final PortfolioState.
+    [ARGS]: result — Completed strict BacktestResult.
+    [RETURNS]: AccountingReconciliation with a near-zero residual for a consistent ledger.
+    [SIDE EFFECTS]: Raises InvalidEvaluationError when initial capital is invalid.
+    """
+    if result.initial_capital <= 0.0:
+        raise InvalidEvaluationError(
+            f"Initial capital must be strictly positive (> 0), got: {result.initial_capital}"
+        )
+    final_state = result.final_portfolio
+    initial_capital = float(result.initial_capital)
+    realized_pnl = float(final_state.realized_pnl)
+    total_fees = float(final_state.fees_paid)
+    funding_paid = float(final_state.funding_paid)
+    unrealized_pnl = float(final_state.unrealized_pnl)
+    account_equity = initial_capital + realized_pnl - total_fees - funding_paid
+    final_equity = float(result.final_equity)
+    return AccountingReconciliation(
+        initial_capital=initial_capital,
+        realized_pnl=realized_pnl,
+        total_fees=total_fees,
+        funding_paid=funding_paid,
+        account_equity=account_equity,
+        unrealized_pnl=unrealized_pnl,
+        final_equity=final_equity,
+        residual=final_equity - (account_equity + unrealized_pnl),
+    )
+
+
 def periods_per_year(timeframe: Timeframe) -> int:
     """
     [PURPOSE]: Return the crypto 24/7 number of bars per calendar year for one timeframe.

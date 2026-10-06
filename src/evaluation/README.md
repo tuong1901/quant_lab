@@ -52,3 +52,14 @@ print(f"Win Rate        : {metrics.win_rate:.2f}%")
 Annualization is derived from the supplied `Timeframe` for a 24/7 crypto market (`M15=35040`, `H1=8760`, `H4=2190`, `D1=365` periods/year). Undefined Sharpe, Sortino, or Calmar values are `None`; invalid equity curves raise `InvalidEvaluationError`.
 
 Trade-level metrics such as round-trip win rate, profit factor, R-multiple, MAE/MFE, and cost attribution are deliberately not inferred from portfolio snapshots. They require a future `TradeLedger` owned by the trading layer.
+
+## 7. Accounting Reconciliation
+
+`calculate_accounting_reconciliation(result)` makes the final-equity ledger explicit:
+
+```text
+account_equity = initial_capital + realized_pnl - fees - funding
+final_equity   = account_equity + unrealized_pnl
+```
+
+The returned residual must be numerically zero for a consistent strict `BacktestResult`. `run_backtest.py` renders this breakdown before its performance and risk metrics.
