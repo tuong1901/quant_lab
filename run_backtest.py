@@ -1,204 +1,143 @@
-"""Strict production backtest CLI: dataset to strategy, execution, and evaluation."""
+"""Strict YAML-configured production backtest runner."""
 
-import argparse
 from dataclasses import dataclass
-from typing import Sequence
 
 import pandas as pd
 
+from src.config.runner import BacktestRunnerConfig, load_backtest_runner_config
 from src.data.dataset import Dataset
 from src.data.loader import DatasetLoader
-from src.evaluation import (
-    AccountingReconciliation,
-    BasicMetrics,
-    EquityRiskMetrics,
-    calculate_accounting_reconciliation,
-    calculate_basic_metrics,
-    calculate_equity_risk_metrics,
-)
+from src.evaluation import AccountingReconciliation, BasicMetrics, EquityRiskMetrics, calculate_accounting_reconciliation, calculate_basic_metrics, calculate_equity_risk_metrics
 from src.strategies.ema import EMAStrategy
 from src.trading.backtest import BacktestEngine, BacktestResult
+from src.trading.portfolio import Portfolio
+from src.trading.portfolio.exceptions import PortfolioException
 
 
 @dataclass(frozen=True)
 class StrictBacktestEvaluation:
-    """
-    [PURPOSE]: Group the result and all read-only evaluation views from one strict backtest run.
-    [DEPENDENCIES]: Produced by run_strict_backtest.
-    [ARGS]: result — strict BacktestResult; basic, risk, accounting — evaluation views.
-    [RETURNS]: Immutable complete strict backtest outcome.
-    [SIDE EFFECTS]: None.
-    """
+    """Complete read-only evaluation produced by one strict backtest."""
     result: BacktestResult
     basic: BasicMetrics
-    risk: EquityRiskMetrics
+    risk: EquityRiskMetrics | None
     accounting: AccountingReconciliation
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    """
-    [PURPOSE]: Parse strict backtest CLI options.
-    [DEPENDENCIES]: argparse.
-    [ARGS]: argv — Optional argument sequence for tests; None reads process arguments.
-    [RETURNS]: Parsed CLI namespace.
-    [SIDE EFFECTS]: Exits with argparse usage error for invalid arguments.
-    """
-    parser = argparse.ArgumentParser(
-        description="Strict Dataset -> EMA Strategy -> BacktestEngine -> Evaluation runner"
-    )
-    parser.add_argument(
-        "--dataset-definition",
-        required=True,
-        help="Path to a strict Dataset YAML descriptor.",
-    )
-    parser.add_argument(
-        "--fast-period",
-        type=int,
-        default=20,
-        help="Fast EMA period for the reference EMA strategy (default: 20).",
-    )
-    parser.add_argument(
-        "--slow-period",
-        type=int,
-        default=50,
-        help="Slow EMA period for the reference EMA strategy (default: 50).",
-    )
-    parser.add_argument(
-        "--risk-free-rate",
-        type=float,
-        default=0.0,
-        help="Annual decimal risk-free rate used by Sharpe and Sortino (default: 0.0).",
-    )
-    return parser.parse_args(argv)
+class AccountDepletedError(RuntimeError):
+    """Raised with final accounting values when a backtest account cannot continue."""
+
+    def __init__(self, portfolio: Portfolio, engine: BacktestEngine, cause: PortfolioException) -> None:
+        self.balance = portfolio.account.balance
+        self.realized_pnl = portfolio.account.realized_pnl
+        self.fees_paid = portfolio.account.fees_paid
+        self.funding_paid = portfolio.account.funding_paid
+        self.start_time = engine.partial_start_timestamp
+        self.stop_time = engine.partial_last_timestamp
+        self.signal_count = len(engine.partial_signals)
+        self.order_count = len(engine.partial_orders)
+        self.fill_count = len(engine.partial_fills)
+        self.last_order_time = engine.partial_orders[-1].created_at if engine.partial_orders else None
+        self.last_fill_time = engine.partial_fills[-1].timestamp if engine.partial_fills else None
+        super().__init__(str(cause))
 
 
 def add_ema_features(frame: pd.DataFrame, fast_period: int, slow_period: int) -> pd.DataFrame:
     """
-    [PURPOSE]: Add the EMA feature columns required by the reference EMA strategy.
-    [DEPENDENCIES]: Called by run_strict_backtest before BacktestEngine.run.
-    [ARGS]: frame — strict canonical OHLCV DataFrame; fast_period, slow_period — positive EMA spans.
-    [RETURNS]: Copy of frame with ema{fast_period} and ema{slow_period} columns.
-    [SIDE EFFECTS]: Raises ValueError for invalid or identical EMA periods.
+    [PURPOSE]: Add EMA columns required by the reference strategy.
+    [DEPENDENCIES]: Called by run_strict_backtest.
+    [ARGS]: frame — Canonical OHLCV frame; fast_period, slow_period — Positive EMA periods.
+    [RETURNS]: Copied frame with EMA columns.
+    [SIDE EFFECTS]: Raises ValueError for invalid periods.
     """
-    if fast_period <= 0 or slow_period <= 0:
-        raise ValueError("EMA periods must be strictly positive.")
-    if fast_period >= slow_period:
-        raise ValueError("fast_period must be smaller than slow_period.")
+    if fast_period <= 0 or slow_period <= 0 or fast_period >= slow_period:
+        raise ValueError("EMA periods must be positive and fast_period must be smaller than slow_period.")
     featured = frame.copy()
-    featured[f"ema{fast_period}"] = featured["close"].ewm(
-        span=fast_period, adjust=False
-    ).mean()
-    featured[f"ema{slow_period}"] = featured["close"].ewm(
-        span=slow_period, adjust=False
-    ).mean()
+    featured[f"ema{fast_period}"] = featured["close"].ewm(span=fast_period, adjust=False).mean()
+    featured[f"ema{slow_period}"] = featured["close"].ewm(span=slow_period, adjust=False).mean()
     return featured
 
 
-def run_strict_backtest(
-    dataset_definition: str,
-    fast_period: int = 20,
-    slow_period: int = 50,
-    risk_free_rate: float = 0.0,
-) -> StrictBacktestEvaluation:
+def run_strict_backtest(config: BacktestRunnerConfig) -> StrictBacktestEvaluation:
     """
-    [PURPOSE]: Run the complete strict production path from Dataset YAML to evaluated backtest result.
-    [DEPENDENCIES]: DatasetLoader, EMAStrategy, BacktestEngine, and evaluation public API.
-    [ARGS]: dataset_definition — strict YAML path; EMA periods; annual decimal risk-free rate.
-    [RETURNS]: StrictBacktestEvaluation containing result, metrics, risk, and accounting views.
-    [SIDE EFFECTS]: Reads the YAML descriptor and its referenced market-data storage.
+    [PURPOSE]: Run Dataset YAML through strict loading, EMA strategy, backtest, and evaluation.
+    [DEPENDENCIES]: DatasetLoader, EMAStrategy, BacktestEngine, evaluation API.
+    [ARGS]: config — Typed settings loaded from config/backtest.yaml.
+    [RETURNS]: Complete strict evaluation.
+    [SIDE EFFECTS]: Reads Dataset YAML and market storage.
     """
-    dataset = Dataset.from_yaml(dataset_definition)
-    market_data = DatasetLoader().load(dataset)
-    frame = add_ema_features(market_data.df, fast_period, slow_period)
-    strategy = EMAStrategy(fast_period=fast_period, slow_period=slow_period)
-    result = BacktestEngine(strategy=strategy).run(frame)
-    basic = calculate_basic_metrics(result)
-    risk = calculate_equity_risk_metrics(
-        basic.equity_curve,
-        timeframe=dataset.timeframe,
-        risk_free_rate=risk_free_rate,
+    dataset = Dataset.from_yaml(config.dataset_definition)
+    data = DatasetLoader().load(dataset)
+    frame = data.df.iloc[:config.bar_limit].copy() if config.bar_limit else data.df
+    portfolio = Portfolio()
+    engine = BacktestEngine(
+        strategy=EMAStrategy(config.fast_period, config.slow_period),
+        portfolio=portfolio,
     )
-    accounting = calculate_accounting_reconciliation(result)
+    try:
+        result = engine.run(add_ema_features(frame, config.fast_period, config.slow_period))
+    except PortfolioException as error:
+        raise AccountDepletedError(portfolio, engine, error) from error
+    basic = calculate_basic_metrics(result)
     return StrictBacktestEvaluation(
         result=result,
         basic=basic,
-        risk=risk,
-        accounting=accounting,
+        risk=calculate_equity_risk_metrics(basic.equity_curve, dataset.timeframe, config.risk_free_rate),
+        accounting=calculate_accounting_reconciliation(result),
     )
 
 
 def format_evaluation(evaluation: StrictBacktestEvaluation) -> str:
     """
-    [PURPOSE]: Render a complete human-readable accounting, performance, and risk summary.
-    [DEPENDENCIES]: Reads StrictBacktestEvaluation only.
-    [ARGS]: evaluation — Completed strict backtest outcome.
-    [RETURNS]: Multi-line report string suitable for CLI output.
+    [PURPOSE]: Render accounting, performance, and risk metrics for the terminal.
+    [DEPENDENCIES]: StrictBacktestEvaluation.
+    [ARGS]: evaluation — Completed strict result.
+    [RETURNS]: Human-readable report.
     [SIDE EFFECTS]: None.
     """
-    basic = evaluation.basic
-    risk = evaluation.risk
-    accounting = evaluation.accounting
-    return "\n".join(
-        [
-            "STRICT BACKTEST EVALUATION",
-            "=" * 72,
-            f"Bars processed:         {evaluation.result.bars_processed}",
-            f"Signals / orders / fills:{len(evaluation.result.signals)} / {len(evaluation.result.orders)} / {len(evaluation.result.fills)}",
-            "",
-            "ACCOUNTING RECONCILIATION",
-            f"Initial capital:         ${accounting.initial_capital:,.2f}",
-            f"Realized PnL:          {accounting.realized_pnl:+,.2f}",
-            f"Fees paid:              -${accounting.total_fees:,.2f}",
-            f"Funding paid:           -${accounting.funding_paid:,.2f}",
-            f"Account equity:          ${accounting.account_equity:,.2f}",
-            f"Unrealized PnL:        {accounting.unrealized_pnl:+,.2f}",
-            f"Final equity:            ${accounting.final_equity:,.2f}",
-            f"Reconciliation residual: {accounting.residual:+.10f}",
-            "",
-            "PERFORMANCE",
-            f"Net PnL:               {basic.net_pnl:+,.2f}",
-            f"Return:                {basic.return_pct:+.4f}%",
-            f"Realized trade events:  {basic.trade_count}",
-            f"Win rate:               {basic.win_rate:.2f}%",
-            "",
-            "RISK",
-            f"Max drawdown:           ${risk.max_drawdown:,.2f} ({risk.max_drawdown_pct:.2%})",
-            f"Drawdown duration:      {risk.max_drawdown_duration_bars} bars",
-            f"Annualized volatility:  {risk.annualized_volatility:.4f}",
-            f"Sharpe / Sortino:       {_format_ratio(risk.sharpe_ratio)} / {_format_ratio(risk.sortino_ratio)}",
-            f"CAGR / Calmar:          {risk.cagr:.4%} / {_format_ratio(risk.calmar_ratio)}",
-        ]
-    )
+    basic, risk, accounting = evaluation.basic, evaluation.risk, evaluation.accounting
+    ratio = lambda value: "N/A" if value is None else f"{value:.4f}"
+    return "\n".join(["STRICT BACKTEST EVALUATION", "=" * 72, f"Bars processed:         {evaluation.result.bars_processed}", f"Signals / orders / fills:{len(evaluation.result.signals)} / {len(evaluation.result.orders)} / {len(evaluation.result.fills)}", "", "ACCOUNTING RECONCILIATION", f"Initial capital:         ${accounting.initial_capital:,.2f}", f"Realized PnL:          {accounting.realized_pnl:+,.2f}", f"Fees paid:              -${accounting.total_fees:,.2f}", f"Funding paid:           -${accounting.funding_paid:,.2f}", f"Account equity:          ${accounting.account_equity:,.2f}", f"Unrealized PnL:        {accounting.unrealized_pnl:+,.2f}", f"Final equity:            ${accounting.final_equity:,.2f}", f"Reconciliation residual: {accounting.residual:+.10f}", "", "PERFORMANCE", f"Net PnL:               {basic.net_pnl:+,.2f}", f"Return:                {basic.return_pct:+.4f}%", f"Realized trade events:  {basic.trade_count}", f"Win rate:               {basic.win_rate:.2f}%", "", "RISK", f"Max drawdown:           ${risk.max_drawdown:,.2f} ({risk.max_drawdown_pct:.2%})", f"Drawdown duration:      {risk.max_drawdown_duration_bars} bars", f"Annualized volatility:  {risk.annualized_volatility:.4f}", f"Sharpe / Sortino:       {ratio(risk.sharpe_ratio)} / {ratio(risk.sortino_ratio)}", f"CAGR / Calmar:          {risk.cagr:.4%} / {ratio(risk.calmar_ratio)}"])
 
 
-def _format_ratio(value: float | None) -> str:
+def main() -> int:
     """
-    [PURPOSE]: Format defined and undefined risk-adjusted ratios consistently for CLI output.
-    [DEPENDENCIES]: Called by format_evaluation.
-    [ARGS]: value — Ratio or None when mathematically undefined.
-    [RETURNS]: Fixed-precision number or N/A.
+    [PURPOSE]: Execute the YAML-configured strict backtest.
+    [DEPENDENCIES]: load_backtest_runner_config and run_strict_backtest.
+    [ARGS]: None.
+    [RETURNS]: Zero after successful execution.
+    [SIDE EFFECTS]: Reads YAML/data and writes report text to stdout.
+    """
+    try:
+        config = load_backtest_runner_config()
+        print(format_evaluation(run_strict_backtest(config)))
+        return 0
+    except AccountDepletedError as error:
+        print(_format_account_depleted_log(error))
+        return 2
+
+
+def _format_account_depleted_log(error: AccountDepletedError) -> str:
+    """
+    [PURPOSE]: Render a factual accounting explanation for an exhausted account.
+    [DEPENDENCIES]: AccountDepletedError values captured from Portfolio.
+    [ARGS]: error — Account depletion failure.
+    [RETURNS]: Human-readable terminal log.
     [SIDE EFFECTS]: None.
     """
-    return "N/A" if value is None else f"{value:.4f}"
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """
-    [PURPOSE]: Execute the strict backtest CLI and print its complete evaluation.
-    [DEPENDENCIES]: parse_args, run_strict_backtest, format_evaluation.
-    [ARGS]: argv — Optional test argument sequence.
-    [RETURNS]: Process status code zero after a successful run.
-    [SIDE EFFECTS]: Reads dataset YAML and market-data storage; writes the report to stdout.
-    """
-    args = parse_args(argv)
-    evaluation = run_strict_backtest(
-        dataset_definition=args.dataset_definition,
-        fast_period=args.fast_period,
-        slow_period=args.slow_period,
-        risk_free_rate=args.risk_free_rate,
-    )
-    print(format_evaluation(evaluation))
-    return 0
+    loss_text = "Realized trading losses contributed to depletion." if error.realized_pnl < 0 else "Execution costs and account cash flow caused the negative balance."
+    return "\n".join([
+        "ACCOUNT DEPLETED",
+        "=" * 72,
+        f"Run period: {error.start_time.isoformat() if error.start_time else 'N/A'} -> {error.stop_time.isoformat() if error.stop_time else 'N/A'}",
+        f"Signals / orders / fills: {error.signal_count} / {error.order_count} / {error.fill_count}",
+        f"Last order / fill: {error.last_order_time.isoformat() if error.last_order_time else 'N/A'} / {error.last_fill_time.isoformat() if error.last_fill_time else 'N/A'}",
+        f"Reason: {loss_text}",
+        f"Balance at stop:         ${error.balance:,.2f}",
+        f"Realized PnL:           {error.realized_pnl:+,.2f}",
+        f"Fees paid:              -${error.fees_paid:,.2f}",
+        f"Funding paid:           -${error.funding_paid:,.2f}",
+        f"Engine detail: {error}",
+    ])
 
 
 if __name__ == "__main__":

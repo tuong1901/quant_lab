@@ -702,12 +702,21 @@ class BacktestEngine:
         orders = []
         fills = []
         portfolio_states = []
+        self.partial_signals = signals
+        self.partial_orders = orders
+        self.partial_fills = fills
+        self.partial_portfolio_states = portfolio_states
+        self.partial_start_timestamp = None
+        self.partial_last_timestamp = None
 
         for i in range(n_bars):
             row = df.iloc[i]
             ts = row["timestamp"] if "timestamp" in row else row.name
             if isinstance(ts, str):
                 ts = pd.to_datetime(ts, utc=True).to_pydatetime()
+            if self.partial_start_timestamp is None:
+                self.partial_start_timestamp = ts
+            self.partial_last_timestamp = ts
 
             if exec_end is not None and ts > exec_end:
                 break

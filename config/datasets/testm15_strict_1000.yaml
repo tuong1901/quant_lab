@@ -1,0 +1,15 @@
+dataset_id: btc_test_m15_strict_1000
+version: v1
+market:
+  venue: binance
+  symbol: BTCUSDT
+  quote_currency: USDT
+  market_type: perpetual
+timeframe: 15m
+data_range:
+  start: "2025-03-04T00:00:00+00:00"
+  end: "2025-03-14T10:00:00+00:00"
+storage_reference:
+  path: data/derived/testm15_strict_1000.csv
+  format: csv
+content_hash: 3f287db95dc98727f348557bba527311b0bb46b48e78108ba47faa69174757a9

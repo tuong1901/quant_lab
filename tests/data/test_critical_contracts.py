@@ -88,17 +88,30 @@ class TestCriticalDataContract(unittest.TestCase):
         self.assertEqual(canonical.loc[1, "open"], canonical.loc[0, "close"])
         self.assertTrue((canonical["open"].iloc[1:].to_numpy() == canonical["close"].iloc[:-1].to_numpy()).all())
 
-    def test_cleaned_open_is_clamped_to_existing_high_without_mutating_high(self) -> None:
+    def test_continuity_repair_uses_low_for_a_green_candle(self) -> None:
         unaligned = self.frame.copy()
         unaligned.loc[0, "close"] = 200.0
         unaligned.loc[0, "high"] = 201.0
-        original_high = unaligned.loc[1, "high"]
+        unaligned.loc[1, ["open", "high", "low", "close"]] = [101.0, 203.0, 201.0, 202.0]
         canonical = canonicalize_ohlcv(unaligned)
         loaded = DatasetLoader().load(self._dataset_for(unaligned))
 
-        self.assertEqual(canonical.loc[1, "open"], original_high)
-        self.assertEqual(canonical.loc[1, "high"], original_high)
-        self.assertEqual(loaded.df.loc[1, "open"], original_high)
+        self.assertEqual(canonical.loc[1, "open"], 200.0)
+        self.assertEqual(canonical.loc[1, "low"], 200.0)
+        self.assertEqual(canonical.loc[1, "high"], 203.0)
+        self.assertEqual(loaded.df.loc[1, "open"], 200.0)
+
+    def test_continuity_repair_uses_high_for_a_red_candle(self) -> None:
+        unaligned = self.frame.copy()
+        unaligned.loc[0, "close"] = 200.0
+        unaligned.loc[0, "high"] = 201.0
+        unaligned.loc[1, ["open", "high", "low", "close"]] = [101.0, 199.0, 190.0, 195.0]
+
+        canonical = canonicalize_ohlcv(unaligned)
+
+        self.assertEqual(canonical.loc[1, "open"], 200.0)
+        self.assertEqual(canonical.loc[1, "high"], 200.0)
+        self.assertEqual(canonical.loc[1, "low"], 190.0)
 
     def test_already_continuous_candle_is_not_changed(self) -> None:
         canonical = canonicalize_ohlcv(self.frame)

@@ -1,0 +1,12 @@
+# Strict production backtest. Edit this file, then run: python run_backtest.py
+dataset_definition: datasets/testm15_strict_full.yaml
+
+data:
+  bar_limit: null
+
+strategy:
+  fast_period: 20
+  slow_period: 50
+
+evaluation:
+  risk_free_rate: 0.0

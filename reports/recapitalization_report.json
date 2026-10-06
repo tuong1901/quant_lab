@@ -1,0 +1,52 @@
+{
+  "initial_capital": 10000.0,
+  "total_external_capital": 40000.0,
+  "recapitalization_count": 3,
+  "final_equity": 18679.750800000016,
+  "economic_net_pnl": -21320.249199999984,
+  "economic_return_pct": -53.30062299999996,
+  "recapitalization_events": [
+    {
+      "event_id": "recap_000001",
+      "timestamp": "2025-05-16 14:45:00+00:00",
+      "previous_cycle_uid": "cycle_001",
+      "new_cycle_uid": "cycle_002",
+      "trigger_threshold": 500.0,
+      "injection_amount": 10000.0,
+      "balance_before": 668.3868000000018,
+      "balance_after": 10668.386800000002,
+      "equity_before": 455.3868000000002,
+      "equity_after": 10455.3868,
+      "cumulative_capital_before": 10000.0,
+      "cumulative_capital_after": 20000.0
+    },
+    {
+      "event_id": "recap_000002",
+      "timestamp": "2025-06-22 13:00:00+00:00",
+      "previous_cycle_uid": "cycle_002",
+      "new_cycle_uid": "cycle_003",
+      "trigger_threshold": 500.0,
+      "injection_amount": 10000.0,
+      "balance_before": 721.9644000000025,
+      "balance_after": 10721.964400000003,
+      "equity_before": 352.964400000008,
+      "equity_after": 10352.964400000008,
+      "cumulative_capital_before": 20000.0,
+      "cumulative_capital_after": 30000.0
+    },
+    {
+      "event_id": "recap_000003",
+      "timestamp": "2025-09-09 21:00:00+00:00",
+      "previous_cycle_uid": "cycle_003",
+      "new_cycle_uid": "cycle_004",
+      "trigger_threshold": 500.0,
+      "injection_amount": 10000.0,
+      "balance_before": 652.9052000000113,
+      "balance_after": 10652.905200000012,
+      "equity_before": 396.9051999999974,
+      "equity_after": 10396.905199999997,
+      "cumulative_capital_before": 30000.0,
+      "cumulative_capital_after": 40000.0
+    }
+  ]
+}

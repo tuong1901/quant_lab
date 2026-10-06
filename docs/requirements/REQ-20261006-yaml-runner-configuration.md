@@ -3,7 +3,7 @@
 - **ID**: REQ-20261006-yaml-runner-configuration
 - **Title**: Chuyển runner runtime options sang YAML thay vì CLI flags
 - **Created Date**: 2026-10-06
-- **Status**: Draft
+- **Status**: In Progress
 
 ---
 
@@ -24,6 +24,9 @@ Cho phép chạy các entrypoint bằng lệnh ngắn `python run_backtest.py` h
 ## 4. Files TO Modify
 - [ ] `config/backtest.yaml` (new)
 - [ ] `config/pipeline.yaml` (new)
+- [ ] `config/datasets/btcusdt_val_m15.yaml` (new; approved addition)
+- [ ] `data/derived/testm15_strict_100.csv` (new; contiguous real-candle derived input)
+- [ ] `src/data/README.md` (document direction-aware continuity wick repair)
 - [ ] `src/config/runner.py` (new)
 - [ ] `run_backtest.py`
 - [ ] `run_pipeline.py`
