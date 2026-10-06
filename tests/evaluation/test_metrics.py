@@ -117,7 +117,7 @@ class TestBasicMetrics(unittest.TestCase):
             dataset_id="btcusdt_15m",
             initial_capital=0.0,
             bars_processed=0,
-            final_timestamp=None,
+            final_timestamp=self.t1,
             signals=(),
             orders=(),
             fills=(),
@@ -127,6 +127,19 @@ class TestBasicMetrics(unittest.TestCase):
 
         with self.assertRaises(InvalidEvaluationError):
             calculate_basic_metrics(bad_result)
+
+    def test_accounting_reconciliation_explains_final_equity(self):
+        """Final equity must reconcile account PnL/costs with open-position unrealized PnL."""
+        from src.evaluation.metrics import calculate_accounting_reconciliation
+
+        reconciliation = calculate_accounting_reconciliation(self.sample_result)
+
+        self.assertEqual(reconciliation.initial_capital, 10000.0)
+        self.assertEqual(reconciliation.realized_pnl, 300.0)
+        self.assertEqual(reconciliation.total_fees, 20.0)
+        self.assertEqual(reconciliation.unrealized_pnl, 0.0)
+        self.assertEqual(reconciliation.account_equity, 10280.0)
+        self.assertAlmostEqual(reconciliation.residual, 0.0)
 
 
 if __name__ == "__main__":

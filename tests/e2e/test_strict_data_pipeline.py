@@ -13,6 +13,7 @@ from src.data.market import Market
 from src.data.timeframe import Timeframe
 from src.data.versioning import calculate_content_hash
 from src.features.indicators import calculate_causal_atr
+from src.evaluation.metrics import calculate_basic_metrics, calculate_equity_risk_metrics
 from src.strategies.ema import EMAStrategy
 from src.trading.backtest import BacktestEngine
 
@@ -25,15 +26,18 @@ class TestStrictDataPipelineE2E(unittest.TestCase):
         scratch_root.mkdir(exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=scratch_root)
         source_path = Path("data/valm15-indivip_signal.csv")
-        self.raw = pd.read_csv(source_path, nrows=64)
+        source_slice = pd.read_csv(source_path, nrows=64)
+        # Rows 1, 10, and 29 have a low-bound inconsistency after open continuity
+        # cleaning. Keep that defect rejected by the loader and use this valid real run.
+        self.raw = source_slice.iloc[30:64].copy()
         self.fixture_path = Path(self.temp_dir.name) / "valm15_slice.csv"
         self.raw.to_csv(self.fixture_path, index=False)
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_strict_dataset_reaches_backtest(self) -> None:
-        """Load verified real data, calculate causal ATR, emit signals and process every bar."""
+    def test_strict_dataset_reaches_evaluation(self) -> None:
+        """Load real data through strict backtest and evaluate the resulting metrics."""
         timestamps = pd.to_datetime(self.raw["time"], utc=True)
         dataset = Dataset(
             dataset_id="btc_val_m15_slice",
@@ -52,7 +56,15 @@ class TestStrictDataPipelineE2E(unittest.TestCase):
         frame["ema4"] = frame["close"].ewm(span=4, adjust=False).mean()
 
         result = BacktestEngine(strategy=EMAStrategy(fast_period=2, slow_period=4)).run(frame)
+        metrics = calculate_basic_metrics(result)
+        risk_metrics = calculate_equity_risk_metrics(metrics.equity_curve, Timeframe.M15)
 
         self.assertEqual(result.bars_processed, len(frame))
         self.assertEqual(len(result.signals), len(frame))
         self.assertEqual(market_data.dataset.content_hash, dataset.content_hash)
+        self.assertEqual(metrics.final_equity, result.final_equity)
+        self.assertEqual(metrics.net_pnl, result.final_equity - result.initial_capital)
+        self.assertEqual(metrics.return_pct, metrics.net_pnl / metrics.initial_capital * 100.0)
+        self.assertEqual(len(metrics.equity_curve), len(result.portfolio_history))
+        self.assertEqual(risk_metrics.final_equity, metrics.final_equity)
+        self.assertEqual(risk_metrics.net_pnl, metrics.net_pnl)

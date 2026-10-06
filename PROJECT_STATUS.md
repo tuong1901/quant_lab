@@ -1,6 +1,16 @@
 # Project Status
 
 ## Done
+- REQ: `docs/requirements/REQ-20261006-strict-backtest-runner.md` (strict CLI runner completed; 3 runner/data E2E tests passed). `run_backtest.py` now follows Dataset YAML → Loader → EMA features → EMAStrategy → BacktestEngine → unified evaluation; legacy WFO remains only in `run_pipeline.py`.
+- REQ: `docs/requirements/REQ-20261006-evaluation-accounting-reconciliation.md` (completed). Strict runner output reconciles initial capital, realized PnL, fees, funding, account equity, unrealized PnL, final equity, and residual.
+- REQ: `docs/requirements/REQ-20261006-evaluation-kernel-and-trade-ledger.md` (Phase A completed: 13 unit tests and strict E2E passed). Evaluation now exposes timeframe-aware CAGR, max drawdown, volatility, Sharpe, Sortino, and Calmar from equity snapshots; trade-ledger metrics remain future work.
+- REQ: `docs/requirements/REQ-20261005-continuity-high-repair.md` (16 data contract tests and E2E passed). Continuity cleaning touches only discontinuous opens; a candidate open above high is clamped back to the existing high, never changing high.
+- REQ: `docs/requirements/REQ-20261005-e2e-data-to-evaluation.md` (strict Dataset → Feature → Strategy → Backtest → BasicMetrics passed on 34 valid real M15 candles). Result: 10 orders/fills, final equity $9,343.56, net PnL -$656.44 (-6.564396%), 9 realized trade events, 22.22% win rate.
+- REQ: `docs/requirements/REQ-20261005-portfolio-contract-tests.md` (P0 portfolio contracts passed: 14 test methods covering all 18 contract IDs).
+- Portfolio lifecycle/accounting is covered for open/add/reduce/close/reversal, PnL signs, fees, MTM, equity reconciliation, duplicate fills, and the golden lifecycle; no production defect was found.
+- REQ: `docs/requirements/REQ-20261005-execution-contract-tests.md` (targeted execution contract suite passed: 9 tests).
+- Execution engine now separates order eligibility/reference pricing from market slippage and fee calculation. Market fills remain T+1 Open (fallback Close); touched limit orders fill exactly at their submitted limit price and cannot double fill.
+- Execution T+1 demo backtest passed: order at 10:15 UTC filled once at the 10:30 UTC open (105.00), final equity 10,004.96. Legacy timing regression tests are blocked before execution by a legacy dataset storage-format value incompatible with the strict data contract.
 - REQ: `docs/requirements/REQ-20261005-data-contract-strict-pipeline.md`.
 - Strict data contract now enforces canonical UTC timestamps, `[start, end)`, full market identity, canonical SHA-256, OHLCV bounds, and strict no-gap loading.
 - Canonicalization now aligns each non-initial candle open to the preceding close before hash/validation; invalid corrected OHLC ranges remain rejected.

@@ -49,7 +49,7 @@ class TestDataContractMutations(unittest.TestCase):
         invalid_ohlc = self.frame.copy(); invalid_ohlc.loc[0, "high"] = -1.0; mutations.append(invalid_ohlc)
         negative_volume = self.frame.copy(); negative_volume.loc[0, "volume"] = -1.0; mutations.append(negative_volume)
         gap = self.frame.copy(); gap.loc[2:, "time"] += pd.Timedelta(minutes=15); mutations.append(gap)
-        discontinuity = self.frame.copy(); discontinuity.loc[0, "close"] = 100.0; mutations.append(discontinuity)
+        low_bound_violation = self.frame.copy(); low_bound_violation.loc[0, "close"] = -100.0; mutations.append(low_bound_violation)
         for mutated in mutations:
             with self.subTest(columns=list(mutated.columns)):
                 with self.assertRaises(DataValidationError):

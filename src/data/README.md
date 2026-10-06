@@ -78,7 +78,7 @@ src/data/
 - `DataRange` uses `[start, end)`: the start is included and the end is excluded.
 - Market identity is `VENUE:SYMBOL:MARKET_TYPE:QUOTE_CURRENCY`.
 - Dataset SHA-256 hashes canonical ordered `timestamp, open, high, low, close, volume` values.
-- Before hashing and validation, every candle after the first has its `open` aligned to the previous candle's `close`; the source file remains unchanged.
+- Before hashing and validation, only a candle whose `open` differs from the previous `close` is aligned; if that candidate open exceeds the candle's existing `high`, its open is clamped to that high. The source file remains unchanged.
 - The loader rejects missing/irregular candles; it never fills gaps.
 - Production runners require `--dataset-definition <descriptor.yaml>` and load it through `Dataset.from_yaml()` plus `DatasetLoader`.
 

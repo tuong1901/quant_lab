@@ -13,15 +13,36 @@ CANONICAL_COLUMNS = ("timestamp", "open", "high", "low", "close", "volume")
 
 def enforce_open_close_continuity(frame: pd.DataFrame) -> pd.DataFrame:
     """
-    [PURPOSE]: Align every non-initial candle open with the preceding candle close.
+    [PURPOSE]: Align every non-initial candle open with the preceding close and repair only invalid direction-specific wicks.
     [DEPENDENCIES]: pandas.
     [ARGS]: frame — Canonical OHLCV DataFrame ordered by source row order.
-    [RETURNS]: Copy whose open values from row two onward equal prior close values.
-    [SIDE EFFECTS]: None; downstream OHLC validation rejects any invalid corrected range.
+    [RETURNS]: Copy whose corrected candles preserve continuity and valid OHLC bounds.
+    [SIDE EFFECTS]: None; downstream OHLC validation rejects all unrelated invalid ranges.
     """
     cleaned = frame.copy()
     if len(cleaned) > 1:
-        cleaned.loc[cleaned.index[1:], "open"] = cleaned["close"].iloc[:-1].to_numpy()
+        candidate_index = cleaned.index[1:]
+        original_opens = cleaned.loc[candidate_index, "open"].to_numpy(copy=True)
+        previous_closes = cleaned["close"].iloc[:-1].to_numpy()
+        highs = cleaned.loc[candidate_index, "high"].to_numpy(copy=True)
+        lows = cleaned.loc[candidate_index, "low"].to_numpy(copy=True)
+        closes = cleaned.loc[candidate_index, "close"].to_numpy()
+        discontinuous = original_opens != previous_closes
+
+        corrected_opens = original_opens.copy()
+        corrected_opens[discontinuous] = previous_closes[discontinuous]
+
+        # Continuity sets open to the preceding close.  If that open becomes an
+        # impossible wick extremum, repair the matching wick rather than undoing
+        # continuity: green/flat candles need low <= open; red candles need high >= open.
+        green_or_flat = closes >= corrected_opens
+        repair_low = discontinuous & green_or_flat & (lows > corrected_opens)
+        repair_high = discontinuous & ~green_or_flat & (highs < corrected_opens)
+        lows[repair_low] = corrected_opens[repair_low]
+        highs[repair_high] = corrected_opens[repair_high]
+        cleaned.loc[candidate_index, "open"] = corrected_opens
+        cleaned.loc[candidate_index, "high"] = highs
+        cleaned.loc[candidate_index, "low"] = lows
     return cleaned
 
 

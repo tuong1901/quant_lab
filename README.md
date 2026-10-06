@@ -35,7 +35,7 @@ Pipeline backtest, tối ưu hóa (Optuna) và đánh giá độ suy giảm Alph
    - **`src/evaluation/`**: Đánh giá chỉ số định lượng (`BasicMetrics`), Alpha decay 2 trục & reporting export.
 
 3. **CLI Runners**:
-   - Verification Golden Baseline: `.\venv\Scripts\python.exe run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json`
+   - Strict Production Backtest: `.\venv\Scripts\python.exe run_backtest.py --dataset-definition <dataset.yaml> --fast-period 20 --slow-period 50`
    - Pipeline Benchmark: `.\venv\Scripts\python.exe run_pipeline.py --benchmark-trials 5`
    - Unit Test Discovery: `.\venv\Scripts\python.exe -m unittest discover -s tests`
 
@@ -91,5 +91,5 @@ quant_lab/
 .\venv\Scripts\python.exe -m unittest discover -s tests
 
 # 2. Kiểm tra Golden Behavioral Baseline (Yêu cầu khớp số học 100.0000%)
-.\venv\Scripts\python.exe run_backtest.py --verify-golden-baseline tests/fixtures/golden_baseline_v1.json
+.\venv\Scripts\python.exe run_backtest.py --dataset-definition <dataset.yaml> --fast-period 20 --slow-period 50
 ```
