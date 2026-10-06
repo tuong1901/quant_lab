@@ -4,6 +4,32 @@ dataset_definition: datasets/testm15_strict_full.yaml
 data:
   bar_limit: null
 
+account:
+  initial_capital: 10000.0
+  leverage: 5.0
+
+risk:
+  sizing_mode: risk_per_trade
+  risk_per_trade_pct: 0.01
+  fixed_quantity: 1.0
+  max_position_size: 1.0
+  max_notional: 50000.0
+  allow_short: true
+
+exit:
+  stop_loss:
+    mode: atr
+    atr_period: 14
+    atr_multiplier: 2.0
+  take_profit:
+    reward_to_risk: 2.0
+  intrabar_priority: stop_first
+
+execution:
+  slippage_bps: 2.0
+  maker_fee_bps: 1.0
+  taker_fee_bps: 2.0
+
 strategy:
   fast_period: 20
   slow_period: 50

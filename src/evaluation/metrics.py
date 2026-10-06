@@ -10,6 +10,7 @@ from typing import Optional, Sequence, Tuple
 
 from src.data.timeframe import Timeframe
 from src.trading.backtest import BacktestResult
+from src.trading.portfolio.trades import ClosedTrade
 from src.evaluation.exceptions import InvalidEvaluationError
 
 
@@ -53,6 +54,56 @@ class BasicMetrics:
         return calculate_basic_metrics(result)
 
 
+@dataclass(frozen=True)
+class TradeMetrics:
+    """
+    [PURPOSE]: Describe completed trades using only immutable ClosedTrade evidence.
+    [DEPENDENCIES]: Created by calculate_trade_metrics and consumed by EvaluationBundle/reporting.
+    [ARGS]: Count, wins, gross profit/loss, net PnL, profit factor, expectancy, and average holding bars.
+    [RETURNS]: TradeMetrics instance.
+    [SIDE EFFECTS]: None.
+    """
+    trade_count: int
+    win_count: int
+    loss_count: int
+    win_rate: float
+    gross_profit: float
+    gross_loss: float
+    net_pnl: float
+    profit_factor: Optional[float]
+    expectancy: Optional[float]
+    average_holding_bars: Optional[float]
+
+
+def calculate_trade_metrics(closed_trades: Sequence[ClosedTrade]) -> TradeMetrics:
+    """
+    [PURPOSE]: Calculate trade metrics from closed lifecycle evidence without inspecting portfolio snapshots.
+    [DEPENDENCIES]: Consumes ClosedTrade records created by the Portfolio.
+    [ARGS]: closed_trades — deterministic sequence of completed trade quantities.
+    [RETURNS]: TradeMetrics with undefined ratios represented by None.
+    [SIDE EFFECTS]: None.
+    """
+    net_values = [trade.net_pnl for trade in closed_trades]
+    wins = [value for value in net_values if value > 0.0]
+    losses = [value for value in net_values if value < 0.0]
+    count = len(net_values)
+    gross_profit = sum(wins)
+    gross_loss = -sum(losses)
+    holding_bars = [trade.holding_bars for trade in closed_trades if trade.holding_bars is not None]
+    return TradeMetrics(
+        trade_count=count,
+        win_count=len(wins),
+        loss_count=len(losses),
+        win_rate=(len(wins) / count * 100.0) if count else 0.0,
+        gross_profit=gross_profit,
+        gross_loss=gross_loss,
+        net_pnl=sum(net_values),
+        profit_factor=(gross_profit / gross_loss) if gross_loss > 0.0 else None,
+        expectancy=(sum(net_values) / count) if count else None,
+        average_holding_bars=(sum(holding_bars) / len(holding_bars)) if holding_bars else None,
+    )
+
+
 def calculate_basic_metrics(result: BacktestResult) -> BasicMetrics:
     """
     [PURPOSE]: Compute Phase 1 basic performance metrics from a completed BacktestResult.
@@ -79,24 +130,7 @@ def calculate_basic_metrics(result: BacktestResult) -> BasicMetrics:
         for snap in result.portfolio_history
     )
 
-    # Calculate trade count and win rate from realized PnL deltas across snapshot history
-    winning_trades = 0
-    trade_count = 0
-
-    if len(result.portfolio_history) > 1:
-        # Track realized PnL transitions between consecutive snapshots
-        for i in range(1, len(result.portfolio_history)):
-            prev_pnl = float(result.portfolio_history[i - 1].realized_pnl)
-            curr_pnl = float(result.portfolio_history[i].realized_pnl)
-            delta = curr_pnl - prev_pnl
-
-            # A non-zero delta signifies a realized trade event (close or partial close)
-            if abs(delta) > 1e-9:
-                trade_count += 1
-                if delta > 0.0:
-                    winning_trades += 1
-
-    win_rate = (winning_trades / trade_count * 100.0) if trade_count > 0 else 0.0
+    trade_metrics = calculate_trade_metrics(result.closed_trades)
 
     return BasicMetrics(
         initial_capital=initial_capital,
@@ -105,8 +139,8 @@ def calculate_basic_metrics(result: BacktestResult) -> BasicMetrics:
         return_pct=return_pct,
         realized_pnl=realized_pnl,
         total_fees=total_fees,
-        trade_count=trade_count,
-        win_rate=win_rate,
+        trade_count=trade_metrics.trade_count,
+        win_rate=trade_metrics.win_rate,
         equity_curve=equity_curve,
     )
 

@@ -14,6 +14,7 @@ from src.trading.portfolio.position import Position, PositionSide
 from src.trading.portfolio.pnl import calculate_realized_pnl, calculate_unrealized_pnl
 from src.trading.portfolio.margin import MarginState, SimpleMarginModel
 from src.trading.portfolio.portfolio import Portfolio, PortfolioState
+from src.trading.portfolio.trades import ClosedTrade
 from src.trading.portfolio.risk import (
     RiskDecisionResult,
     RiskDecision,
@@ -36,6 +37,7 @@ __all__ = [
     "SimpleMarginModel",
     "Portfolio",
     "PortfolioState",
+    "ClosedTrade",
     "RiskDecisionResult",
     "RiskDecision",
     "RiskManager",

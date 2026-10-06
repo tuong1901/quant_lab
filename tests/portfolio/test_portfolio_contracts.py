@@ -220,3 +220,26 @@ class TestPortfolioContracts(unittest.TestCase):
         self.assertEqual(final_state.unrealized_pnl, 20.0)
         self.assertEqual(portfolio.account.equity, 10004.0)
         self.assertEqual(final_state.equity, 10024.0)
+
+    def test_trade_ledger_records_partial_close_with_prorated_entry_fee(self):
+        portfolio = Portfolio()
+        portfolio.apply_fill(make_fill("ledger-open", OrderSide.BUY, 100.0, quantity=3.0, fee=3.0))
+        portfolio.apply_fill(make_fill("ledger-reduce", OrderSide.SELL, 120.0, quantity=1.0, fee=2.0, minute=15))
+
+        trade = portfolio.closed_trades[0]
+        self.assertEqual(trade.quantity, 1.0)
+        self.assertEqual(trade.gross_pnl, 20.0)
+        self.assertEqual(trade.entry_fee, 1.0)
+        self.assertEqual(trade.exit_fee, 2.0)
+        self.assertEqual(trade.net_pnl, 17.0)
+        self.assertEqual(portfolio.closed_trades[0].entry_timestamp, START_TIME)
+
+    def test_trade_ledger_records_reversal_close_and_assigns_residual_fee_to_new_cycle(self):
+        portfolio = Portfolio()
+        portfolio.apply_fill(make_fill("ledger-open", OrderSide.BUY, 100.0, quantity=2.0, fee=2.0))
+        portfolio.apply_fill(make_fill("ledger-reverse", OrderSide.SELL, 90.0, quantity=5.0, fee=5.0, minute=15))
+        portfolio.apply_fill(make_fill("ledger-close-short", OrderSide.BUY, 80.0, quantity=3.0, fee=3.0, minute=30))
+
+        first, second = portfolio.closed_trades
+        self.assertEqual((first.quantity, first.gross_pnl, first.entry_fee, first.exit_fee, first.net_pnl), (2.0, -20.0, 2.0, 2.0, -24.0))
+        self.assertEqual((second.quantity, second.gross_pnl, second.entry_fee, second.exit_fee, second.net_pnl), (3.0, 30.0, 3.0, 3.0, 24.0))
