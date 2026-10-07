@@ -1,5 +1,7 @@
 """Causal reversal-pattern features derived from candle primitives."""
 
+from dataclasses import dataclass
+
 import pandas as pd
 
 
@@ -9,12 +11,38 @@ _REQUIRED_COLUMNS = (
 )
 
 
+@dataclass(frozen=True)
+class ReversalPatternCriteria:
+    """
+    [PURPOSE]: Hold continuous inequality thresholds for one reversal-pattern evaluation run.
+    [DEPENDENCIES]: Required by add_reversal_patterns; supplied by a strategy, experiment, or demonstration caller.
+    [ARGS]: Max body ratio, minimum dominant wick ratio, and bullish/bearish close-position boundaries.
+    [RETURNS]: Immutable validated criteria instance.
+    [SIDE EFFECTS]: Raises ValueError for values outside [0, 1] or inconsistent close-position boundaries.
+    """
+    max_body_ratio: float
+    min_wick_ratio: float
+    bullish_close_position: float
+    bearish_close_position: float
+
+    def __post_init__(self) -> None:
+        """
+        [PURPOSE]: Validate continuous pattern criteria before any candle is classified.
+        [DEPENDENCIES]: Called automatically by dataclass construction.
+        [ARGS]: None.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Raises ValueError for invalid criteria.
+        """
+        values = (self.max_body_ratio, self.min_wick_ratio, self.bullish_close_position, self.bearish_close_position)
+        if any(not 0.0 <= value <= 1.0 for value in values):
+            raise ValueError("Reversal-pattern criteria must be within [0, 1].")
+        if self.bearish_close_position > self.bullish_close_position:
+            raise ValueError("bearish_close_position cannot exceed bullish_close_position.")
+
+
 def add_reversal_patterns(
     frame: pd.DataFrame,
-    max_body_ratio: float = 0.30,
-    min_wick_ratio: float = 0.50,
-    bullish_close_position: float = 0.70,
-    bearish_close_position: float = 0.30,
+    criteria: ReversalPatternCriteria,
 ) -> pd.DataFrame:
     """
     [PURPOSE]: Add causal bullish/bearish pin-bar and engulfing pattern evidence columns.
@@ -24,25 +52,20 @@ def add_reversal_patterns(
     [SIDE EFFECTS]: Raises ValueError for missing columns or invalid thresholds; does not mutate frame or generate orders.
     """
     missing = [column for column in _REQUIRED_COLUMNS if column not in frame.columns]
-    if missing:
+    if missing: 
         raise ValueError(f"Reversal patterns require columns: {', '.join(missing)}.")
-    if not (0.0 <= max_body_ratio <= 1.0 and 0.0 <= min_wick_ratio <= 1.0):
-        raise ValueError("Pattern body and wick thresholds must be within [0, 1].")
-    if not (0.0 <= bearish_close_position <= bullish_close_position <= 1.0):
-        raise ValueError("Close-position thresholds must satisfy 0 <= bearish <= bullish <= 1.")
-
     result = frame.copy()
-    small_body = result["candle_body_ratio"] <= max_body_ratio
+    small_body = result["candle_body_ratio"] <= criteria.max_body_ratio
     result["bullish_pin_bar"] = (
         small_body
-        & (result["lower_wick_ratio"] >= min_wick_ratio)
-        & (result["close_position"] >= bullish_close_position)
+        & (result["lower_wick_ratio"] >= criteria.min_wick_ratio)
+        & (result["close_position"] >= criteria.bullish_close_position)
         & (result["candle_direction"] >= 0)
     ).fillna(False).astype(bool)
     result["bearish_pin_bar"] = (
         small_body
-        & (result["upper_wick_ratio"] >= min_wick_ratio)
-        & (result["close_position"] <= bearish_close_position)
+        & (result["upper_wick_ratio"] >= criteria.min_wick_ratio)
+        & (result["close_position"] <= criteria.bearish_close_position)
         & (result["candle_direction"] <= 0)
     ).fillna(False).astype(bool)
 
