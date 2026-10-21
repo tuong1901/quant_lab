@@ -1,5 +1,12 @@
 # Project Status
 
+## 2026-10-21 — strict runner wiring and function logs
+- Done: configured ATR period reaches the indicator; clock/context use selected dataset; explicit engine symbol is separate from run identity. Existing callers retain the run-ID symbol fallback.
+- Done: finite numeric validation and risk-free-rate bounds; INFO runtime summaries and DEBUG function traces; CLI appends UTF-8 logs to `logs/backtest.log` and keeps reports on stdout.
+- Verification: 3 config tests + 8 synthetic runner/engine/logging tests passed. No real YAML, market data or log files were accessed by these tests.
+- Next/open: real-data E2E awaits separate file-read permission; legacy config tests still reference retired YAML and outdated types. Existing ATR initialization and fill-bar ATR timing warrant a separate causality review; unchanged by this wiring repair.
+- REQ: `docs/requirements/REQ-20261021-fix-backtest-wiring-and-logging.md`.
+
 ## Done
 - REQ: `docs/requirements/REQ-20261006-remove-legacy-config-yaml.md` (legacy YAML retired). Removed the ten user-approved files and `tests/config/test_loader.py`; strict `backtest.yaml` and `config/datasets/` descriptors remain.
 - REQ: `docs/requirements/REQ-20261006-strict-backtest-risk-configuration.md` (in progress). Strict `backtest.yaml` now configures capital/leverage, risk sizing, ATR stop/2R target, fees, and slippage. Parser check and 20 portfolio/evaluation regressions pass; real-data strict E2E remains pending data-read approval.

@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 import numpy as np
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.data.timeframe import validate_utc_timestamp
 from src.trading.execution.order import Order, OrderSide, OrderType, OrderStatus, OrderId, FillId
@@ -648,8 +651,18 @@ class BacktestEngine:
         allow_short: bool = True,
         atr_multiplier: Optional[float] = None,
         reward_to_risk: Optional[float] = None,
+        symbol: Optional[str] = None,
         **kwargs,
     ):
+        """
+        [PURPOSE]: Assemble simulation dependencies and explicit instrument identity.
+        [DEPENDENCIES]: Runner or EnvironmentFactory; Portfolio, ExecutionEngine, Clock.
+        [ARGS]: strategy, environment/context or direct dependencies, sizing/exit settings, optional symbol.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Initializes and logs runtime state; raises BacktestError for invalid symbol.
+        """
+        if symbol is not None and (not isinstance(symbol, str) or not symbol.strip()):
+            raise BacktestError("symbol must be a non-empty string when provided.")
         if environment is not None:
             self.environment = environment
             self.portfolio = environment.portfolio
@@ -673,6 +686,7 @@ class BacktestEngine:
                 execution_id = "default_execution"
             context = DefaultContext()
         self.context = context
+        self.symbol = symbol
         self.default_order_quantity = default_order_quantity
         self.sizing_mode = sizing_mode
         self.risk_per_trade_pct = risk_per_trade_pct
@@ -683,6 +697,16 @@ class BacktestEngine:
         self.reward_to_risk = reward_to_risk
         self._exit_levels: Dict[str, Tuple[float, float]] = {}
         self.state = BacktestState()
+        logger.info(
+            "Engine initialized run=%s dataset=%s symbol=%s strategy=%s clock=%s "
+            "execution=%s portfolio=%s sizing=%s fixed_quantity=%s risk_pct=%s "
+            "max_position=%s max_notional=%s allow_short=%s atr_multiplier=%s reward_to_risk=%s",
+            self._get_run_id(), getattr(self.context, "dataset_id", None), self.symbol,
+            getattr(self.strategy, "strategy_id", None), type(self.clock).__name__,
+            type(self.execution).__name__, type(self.portfolio).__name__, self.sizing_mode,
+            self.default_order_quantity, self.risk_per_trade_pct, self.max_position_size,
+            self.max_notional, self.allow_short, self.atr_multiplier, self.reward_to_risk,
+        )
 
     def _entry_quantity(self, equity: float, price: float, atr: float) -> float:
         """
@@ -690,8 +714,9 @@ class BacktestEngine:
         [DEPENDENCIES]: Uses calculate_risk_position_size and strict runner risk settings.
         [ARGS]: equity — current account equity; price — current planning price; atr — causal ATR at signal time.
         [RETURNS]: Positive quantity or zero when the risk configuration cannot create a valid order.
-        [SIDE EFFECTS]: None.
+        [SIDE EFFECTS]: Emits DEBUG sizing diagnostics.
         """
+        logger.debug("Sizing equity=%s price=%s atr=%s mode=%s", equity, price, atr, self.sizing_mode)
         if self.sizing_mode == "risk_per_trade":
             if self.atr_multiplier is None or atr <= 0.0:
                 return 0.0
@@ -699,7 +724,9 @@ class BacktestEngine:
             quantity = calculate_risk_position_size(equity, self.risk_per_trade_pct, price, stop_price)
         else:
             quantity = self.default_order_quantity
-        return max(0.0, min(quantity, self.max_position_size, self.max_notional / price))
+        capped_quantity = max(0.0, min(quantity, self.max_position_size, self.max_notional / price))
+        logger.debug("Sized raw_quantity=%s capped_quantity=%s", quantity, capped_quantity)
+        return capped_quantity
 
     def _set_exit_levels(self, fill: Fill, atr: float) -> None:
         """
@@ -707,8 +734,9 @@ class BacktestEngine:
         [DEPENDENCIES]: Called by run after Portfolio applies an opening fill.
         [ARGS]: fill — actual entry fill; atr — causal ATR available at its fill bar.
         [RETURNS]: None.
-        [SIDE EFFECTS]: Mutates active exit levels for the filled symbol.
+        [SIDE EFFECTS]: Mutates active exit levels and emits DEBUG diagnostics.
         """
+        logger.debug("Setting exits symbol=%s fill_price=%s atr=%s", fill.symbol, fill.price, atr)
         if self.atr_multiplier is None or self.reward_to_risk is None or atr <= 0.0:
             return
         risk_distance = atr * self.atr_multiplier
@@ -716,6 +744,7 @@ class BacktestEngine:
             self._exit_levels[fill.symbol] = (fill.price - risk_distance, fill.price + risk_distance * self.reward_to_risk)
         else:
             self._exit_levels[fill.symbol] = (fill.price + risk_distance, fill.price - risk_distance * self.reward_to_risk)
+        logger.debug("Exit levels symbol=%s stop_target=%s", fill.symbol, self._exit_levels[fill.symbol])
 
     def _apply_bar_exit(self, portfolio: Portfolio, symbol: str, bar: Dict[str, float], timestamp: datetime) -> Optional[Fill]:
         """
@@ -723,8 +752,9 @@ class BacktestEngine:
         [DEPENDENCIES]: Uses Portfolio.apply_fill and execution fee model; called before strategy evaluation.
         [ARGS]: portfolio, symbol, OHLC bar, timestamp.
         [RETURNS]: Exit Fill or None when no configured exit is touched.
-        [SIDE EFFECTS]: Mutates Portfolio and removes consumed exit levels; stop wins when both exits are touched.
+        [SIDE EFFECTS]: Mutates Portfolio, logs exits; stop wins when both exits are touched.
         """
+        logger.debug("Checking exits symbol=%s timestamp=%s", symbol, timestamp)
         position = portfolio.positions.get(symbol)
         levels = self._exit_levels.get(symbol)
         if position is None or levels is None:
@@ -742,9 +772,18 @@ class BacktestEngine:
         fill = Fill(str(FillId.generate()), f"exit:{symbol}:{timestamp.isoformat()}", symbol, exit_side, position.quantity, exit_price, fee, timestamp)
         portfolio.apply_fill(fill)
         del self._exit_levels[symbol]
+        logger.debug("Exit filled symbol=%s price=%s quantity=%s fee=%s", symbol, exit_price, fill.quantity, fee)
         return fill
 
     def _get_run_id(self) -> str:
+        """
+        [PURPOSE]: Resolve run identity independently of the instrument symbol.
+        [DEPENDENCIES]: ExecutionContext.run.
+        [ARGS]: None.
+        [RETURNS]: Run identifier string.
+        [SIDE EFFECTS]: Emits a DEBUG trace.
+        """
+        logger.debug("Resolving run identity context_type=%s", type(self.context).__name__)
         if hasattr(self.context, "run"):
             run_obj = self.context.run
             if isinstance(run_obj, str):
@@ -756,11 +795,30 @@ class BacktestEngine:
 
     def run(self, df: pd.DataFrame) -> BacktestResult:
         """
+        [PURPOSE]: Execute a backtest with completion and failure diagnostics.
+        [DEPENDENCIES]: _run_bars.
+        [ARGS]: df — featured OHLCV data.
+        [RETURNS]: Completed BacktestResult.
+        [SIDE EFFECTS]: Logs progress/errors, mutates trading state, propagates failures.
+        """
+        logger.info("Engine starting rows=%s run=%s symbol=%s", len(df), self._get_run_id(), self.symbol)
+        try:
+            result = self._run_bars(df)
+        except Exception:
+            logger.exception("Engine failed run=%s last_timestamp=%s", self._get_run_id(),
+                             getattr(self, "partial_last_timestamp", None))
+            raise
+        logger.info("Engine completed bars=%s signals=%s orders=%s fills=%s", result.bars_processed,
+                    len(result.signals), len(result.orders), len(result.fills))
+        return result
+
+    def _run_bars(self, df: pd.DataFrame) -> BacktestResult:
+        """
         [PURPOSE]: Execute causal T+1 backtest simulation loop over DataFrame.
         [DEPENDENCIES]: ExecutionEngine, Portfolio, Strategy, HistoricalClock.
         [ARGS]: df (pd.DataFrame).
         [RETURNS]: BacktestResult audit record.
-        [SIDE EFFECTS]: Mutates internal portfolio and execution state; raises BacktestError if df empty.
+        [SIDE EFFECTS]: Mutates runtime state, emits DEBUG traces; raises BacktestError if df empty.
         """
         if df.empty:
             raise BacktestError("DataFrame for backtest is empty.")
@@ -770,6 +828,9 @@ class BacktestEngine:
         exec_engine = self.execution
         clock = self.clock
         run_id = self._get_run_id()
+        # Older callers used run_id as their instrument key. An explicit symbol
+        # preserves that compatibility while keeping production run identity separate.
+        symbol = self.symbol if self.symbol is not None else run_id
 
         window = getattr(getattr(self.context, "run", None), "window", None)
         exec_start = getattr(window, "execution_start", None) if window else None
@@ -794,6 +855,7 @@ class BacktestEngine:
             if self.partial_start_timestamp is None:
                 self.partial_start_timestamp = ts
             self.partial_last_timestamp = ts
+            logger.debug("Processing bar index=%s timestamp=%s symbol=%s", i, ts, symbol)
 
             if exec_end is not None and ts > exec_end:
                 break
@@ -820,12 +882,12 @@ class BacktestEngine:
                     if opened_or_reversed and f.symbol in p_state.positions:
                         self._set_exit_levels(f, float(row.get("atr", 0.0)))
 
-            exit_fill = self._apply_bar_exit(portfolio, run_id, bar_dict, ts)
+            exit_fill = self._apply_bar_exit(portfolio, symbol, bar_dict, ts)
             if exit_fill is not None:
                 fills.append(exit_fill)
 
             # 2. Update mark-to-market at bar Close T
-            p_state = portfolio.mark_to_market(timestamp=ts, mark_prices={run_id: bar_dict["close"]})
+            p_state = portfolio.mark_to_market(timestamp=ts, mark_prices={symbol: bar_dict["close"]})
             portfolio_states.append(p_state)
 
             # 3. Strategy evaluates Close T and generates signal for T+1
@@ -837,17 +899,18 @@ class BacktestEngine:
             strat_ctx = StrategyContext(
                 timestamp=ts,
                 price=bar_dict["close"],
-                position_side=p_state.positions.get(run_id).side if run_id in p_state.positions else None,
+                position_side=p_state.positions.get(symbol).side if symbol in p_state.positions else None,
                 features=features,
             )
             sig = self.strategy.on_bar(strat_ctx)
+            logger.debug("Signal timestamp=%s action=%s equity=%s", ts, sig.action, p_state.equity)
             signals.append(sig)
 
             # 4. Translate Signal to Order
             if exec_start is not None and ts < exec_start:
                 continue
 
-            curr_pos = p_state.positions.get(run_id)
+            curr_pos = p_state.positions.get(symbol)
             target_side = sig.action
 
             if target_side == SignalAction.LONG:
@@ -857,7 +920,7 @@ class BacktestEngine:
                         continue
                     ord_obj = Order(
                         order_id=OrderId.generate(),
-                        symbol=run_id,
+                        symbol=symbol,
                         side=OrderSide.BUY,
                         order_type=OrderType.MARKET,
                         quantity=entry_quantity,
@@ -869,7 +932,7 @@ class BacktestEngine:
                     reversal_qty = curr_pos.quantity + self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
                     ord_obj = Order(
                         order_id=OrderId.generate(),
-                        symbol=run_id,
+                        symbol=symbol,
                         side=OrderSide.BUY,
                         order_type=OrderType.MARKET,
                         quantity=reversal_qty,
@@ -886,7 +949,7 @@ class BacktestEngine:
                         continue
                     ord_obj = Order(
                         order_id=OrderId.generate(),
-                        symbol=run_id,
+                        symbol=symbol,
                         side=OrderSide.SELL,
                         order_type=OrderType.MARKET,
                         quantity=entry_quantity,
@@ -898,7 +961,7 @@ class BacktestEngine:
                     reversal_qty = curr_pos.quantity + self._entry_quantity(p_state.equity, bar_dict["close"], float(row.get("atr", 0.0)))
                     ord_obj = Order(
                         order_id=OrderId.generate(),
-                        symbol=run_id,
+                        symbol=symbol,
                         side=OrderSide.SELL,
                         order_type=OrderType.MARKET,
                         quantity=reversal_qty,

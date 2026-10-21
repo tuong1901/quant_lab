@@ -1,4 +1,59 @@
-# Config Layer Subsystem (`src/config/` & `config/*.yaml`)
+# Configuration layer — maintained strict runner
+
+Production flow: `config/backtest.yaml` -> `load_backtest_runner_config()` ->
+`BacktestRunnerConfig` -> `run_strict_backtest()`. Dataset descriptors are loaded
+separately by `Dataset.from_yaml()` in the runner.
+
+## Validation and runtime wiring
+
+`runner.py` resolves the dataset path relative to the configuration YAML and
+validates positive integer EMA/ATR periods, fast < slow, optional positive bar
+limit, finite positive capital/leverage/sizing/exit settings, finite non-negative
+fees/slippage in bps, boolean short permission, and finite risk-free rate > -1.
+It requires ATR stops and `stop_first` intrabar priority.
+`BacktestRunnerConfig.__post_init__` also validates direct Python construction.
+
+The configured ATR period is forwarded to feature calculation. The runner starts
+the clock at the first selected candle and records dataset identity including
+version in ExecutionContext. BacktestEngine receives an explicit market symbol
+separate from run ID; old callers retain the run-ID symbol fallback. Empty
+selected data is rejected before engine creation.
+
+## Function logs
+
+```powershell
+.\venv\Scripts\python.exe run_backtest.py
+.\venv\Scripts\python.exe run_backtest.py --log-level DEBUG
+```
+
+Only the CLI configures handlers. INFO logs resolved settings, dataset descriptor
+and identity, row counts/time range, feature periods, constructor settings and
+completion counts. DEBUG adds configuration helper and engine sizing/exit/bar
+traces. Records contain time, level, module and function name. Full DataFrames
+and raw YAML are not logged. Diagnostics go to stderr and append UTF-8 records
+to `logs/backtest.log` relative to the working directory; reports stay on stdout.
+Failures include traceback/context. CLI exit codes: 0 success, 2 existing
+account-depletion path, 1 other handled runtime failures.
+
+## Focused verification
+
+```powershell
+.\venv\Scripts\python.exe -B -m unittest discover -s tests/config -p test_runner_config.py -v
+.\venv\Scripts\python.exe -B -m unittest discover -s tests/engine -p test_strict_runner_wiring.py -v
+```
+
+These 11 tests use synthetic in-memory inputs and mocked disk boundaries:
+numerical validation, ATR propagation, non-BTC/pre-2020 integration, constructor
+compatibility, parameter forwarding, function logs and CLI behavior. They do not
+certify the ATR algorithm or all trading-engine behavior. Real-data execution
+requires separate file-access permission.
+
+## Historical legacy design (not the production path)
+
+The material below describes `loader.py`, `models.py`, `validation.py` and old
+exports. Their environment/experiment/pipeline YAML files were retired.
+Legacy boolean/timezone/snapshot issues remain outside the strict-runner repair.
+`exceptions.py` is shared by the maintained runner and legacy API.
 
 Centralized configuration layer for Quant Lab responsible for parsing YAML declarations into typed configuration objects, resolving inter-config references, performing validation, resolving deterministic anchors (`now`), and generating reproducible config snapshots.
 
@@ -55,4 +110,5 @@ Chạy bộ kiểm thử tự động tại `tests/config/`:
 ```bash
 .\venv\Scripts\python.exe -m unittest discover -s tests/config -v
 ```
-- **19/19 Unit tests PASS 100%** (Thời gian chạy ~0.09s).
+- Historical result only: 19 tests passed before retirement. Current legacy tests
+  reference removed YAML and outdated domain constructors; this is not a current passing suite.

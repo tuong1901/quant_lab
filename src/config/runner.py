@@ -3,10 +3,14 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+import logging
+import math
 
 import yaml
 
 from src.config.exceptions import ConfigFileNotFoundError, ConfigParseError, ConfigValidationError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,35 @@ class BacktestRunnerConfig:
     maker_fee_bps: float
     taker_fee_bps: float
 
+    def __post_init__(self) -> None:
+        """
+        [PURPOSE]: Reject invalid settings even when callers construct config directly.
+        [DEPENDENCIES]: Numeric helpers; consumed by run_strict_backtest.
+        [ARGS]: None.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Logs validation and raises ConfigValidationError.
+        """
+        for name in ("fast_period", "slow_period", "atr_period"):
+            _positive_int(getattr(self, name), name)
+        _positive_int(self.bar_limit, "bar_limit", allow_none=True)
+        if self.fast_period >= self.slow_period:
+            raise ConfigValidationError("fast_period must be smaller than slow_period.")
+        for name in ("initial_capital", "leverage", "risk_per_trade_pct", "fixed_quantity",
+                     "max_position_size", "max_notional", "atr_multiplier", "reward_to_risk"):
+            _positive_number(getattr(self, name), name)
+        for name in ("slippage_bps", "maker_fee_bps", "taker_fee_bps"):
+            _positive_number(getattr(self, name), name, allow_zero=True)
+        rate = _finite_number(self.risk_free_rate, "risk_free_rate")
+        if rate <= -1:
+            raise ConfigValidationError("risk_free_rate must be greater than -1.")
+        if self.sizing_mode not in ("risk_per_trade", "fixed_quantity"):
+            raise ConfigValidationError("Invalid sizing_mode.")
+        if not isinstance(self.allow_short, bool):
+            raise ConfigValidationError("allow_short must be boolean.")
+        if not isinstance(self.dataset_definition, str) or not self.dataset_definition.strip():
+            raise ConfigValidationError("dataset_definition must be a non-empty path.")
+        logger.debug("BacktestRunnerConfig validated")
+
 
 @dataclass(frozen=True)
 class PipelineRunnerConfig:
@@ -54,6 +87,7 @@ def _read_yaml_mapping(path: str | Path) -> tuple[dict[str, Any], Path]:
     [SIDE EFFECTS]: Reads a file and raises a clear config error for missing or malformed YAML.
     """
     resolved = Path(path).resolve()
+    logger.info("Reading configuration path=%s", resolved)
     if not resolved.is_file():
         raise ConfigFileNotFoundError(f"Runner configuration not found: {resolved}")
     try:
@@ -62,10 +96,19 @@ def _read_yaml_mapping(path: str | Path) -> tuple[dict[str, Any], Path]:
         raise ConfigParseError(f"Malformed runner YAML {resolved}: {error}") from error
     if not isinstance(payload, dict):
         raise ConfigValidationError(f"Runner configuration {resolved} must be a YAML mapping.")
+    logger.debug("Loaded YAML mapping sections=%s", sorted(map(str, payload)))
     return payload, resolved
 
 
 def _mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
+    """
+    [PURPOSE]: Require a named mapping section.
+    [DEPENDENCIES]: Runner loaders.
+    [ARGS]: payload — parsed mapping; key — section name.
+    [RETURNS]: Section mapping.
+    [SIDE EFFECTS]: Logs section lookup; raises ConfigValidationError.
+    """
+    logger.debug("Validating mapping section=%s", key)
     value = payload.get(key)
     if not isinstance(value, dict):
         raise ConfigValidationError(f"Runner configuration requires mapping '{key}'.")
@@ -73,6 +116,14 @@ def _mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _positive_int(value: Any, name: str, allow_none: bool = False) -> int | None:
+    """
+    [PURPOSE]: Validate a positive integer setting.
+    [DEPENDENCIES]: Runner loaders and BacktestRunnerConfig.
+    [ARGS]: value, name — setting; allow_none — permit omitted limit.
+    [RETURNS]: Valid integer or None.
+    [SIDE EFFECTS]: Logs validation; raises ConfigValidationError.
+    """
+    logger.debug("Validating %s=%r allow_none=%s", name, value, allow_none)
     if value is None and allow_none:
         return None
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
@@ -81,17 +132,54 @@ def _positive_int(value: Any, name: str, allow_none: bool = False) -> int | None
 
 
 def _relative_path(value: Any, config_path: Path, name: str) -> str:
+    """
+    [PURPOSE]: Resolve a path relative to its configuration file.
+    [DEPENDENCIES]: Runner loaders, pathlib.
+    [ARGS]: value — path; config_path — origin; name — setting name.
+    [RETURNS]: Absolute path string.
+    [SIDE EFFECTS]: Logs resolution; raises ConfigValidationError.
+    """
+    logger.debug("Resolving %s=%r relative to %s", name, value, config_path)
     if not isinstance(value, str) or not value.strip():
         raise ConfigValidationError(f"'{name}' must be a non-empty path string.")
     candidate = Path(value)
     return str((config_path.parent / candidate).resolve()) if not candidate.is_absolute() else str(candidate)
 
 
+def _finite_number(value: Any, name: str) -> float:
+    """
+    [PURPOSE]: Reject booleans, non-numbers and non-finite numeric values.
+    [DEPENDENCIES]: Numeric validators and risk-free rate parsing.
+    [ARGS]: value — input; name — diagnostic field name.
+    [RETURNS]: Finite float.
+    [SIDE EFFECTS]: Logs validation; raises ConfigValidationError.
+    """
+    logger.debug("Validating finite %s=%r", name, value)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigValidationError(f"'{name}' must be a finite number.")
+    try:
+        number = float(value)
+    except OverflowError as error:
+        raise ConfigValidationError(f"'{name}' exceeds the supported numeric range.") from error
+    if not math.isfinite(number):
+        raise ConfigValidationError(f"'{name}' must be a finite number.")
+    return number
+
+
 def _positive_number(value: Any, name: str, allow_zero: bool = False) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0 or (value == 0 and not allow_zero):
+    """
+    [PURPOSE]: Validate a finite positive or non-negative numeric setting.
+    [DEPENDENCIES]: _finite_number; runner loaders.
+    [ARGS]: value, name — setting; allow_zero — accept zero.
+    [RETURNS]: Valid float.
+    [SIDE EFFECTS]: Logs validation; raises ConfigValidationError.
+    """
+    logger.debug("Validating positive %s=%r allow_zero=%s", name, value, allow_zero)
+    number = _finite_number(value, name)
+    if number < 0 or (number == 0 and not allow_zero):
         qualifier = "non-negative" if allow_zero else "strictly positive"
         raise ConfigValidationError(f"'{name}' must be {qualifier}.")
-    return float(value)
+    return number
 
 
 def load_backtest_runner_config(path: str | Path = "config/backtest.yaml") -> BacktestRunnerConfig:
@@ -117,9 +205,7 @@ def load_backtest_runner_config(path: str | Path = "config/backtest.yaml") -> Ba
     if fast_period >= slow_period:
         raise ConfigValidationError("'strategy.fast_period' must be smaller than 'strategy.slow_period'.")
     bar_limit = _positive_int(data.get("bar_limit"), "data.bar_limit", allow_none=True)
-    risk_free_rate = evaluation.get("risk_free_rate")
-    if isinstance(risk_free_rate, bool) or not isinstance(risk_free_rate, (int, float)):
-        raise ConfigValidationError("'evaluation.risk_free_rate' must be numeric.")
+    risk_free_rate = _finite_number(evaluation.get("risk_free_rate"), "evaluation.risk_free_rate")
     sizing_mode = risk.get("sizing_mode")
     if sizing_mode not in {"risk_per_trade", "fixed_quantity"}:
         raise ConfigValidationError("'risk.sizing_mode' must be 'risk_per_trade' or 'fixed_quantity'.")
@@ -130,7 +216,7 @@ def load_backtest_runner_config(path: str | Path = "config/backtest.yaml") -> Ba
     allow_short = risk.get("allow_short")
     if not isinstance(allow_short, bool):
         raise ConfigValidationError("'risk.allow_short' must be boolean.")
-    return BacktestRunnerConfig(
+    config = BacktestRunnerConfig(
         dataset_definition=_relative_path(payload.get("dataset_definition"), config_path, "dataset_definition"),
         fast_period=fast_period,
         slow_period=slow_period,
@@ -151,6 +237,8 @@ def load_backtest_runner_config(path: str | Path = "config/backtest.yaml") -> Ba
         maker_fee_bps=_positive_number(execution.get("maker_fee_bps"), "execution.maker_fee_bps", allow_zero=True),
         taker_fee_bps=_positive_number(execution.get("taker_fee_bps"), "execution.taker_fee_bps", allow_zero=True),
     )
+    logger.info("Loaded strict configuration: %s", config)
+    return config
 
 
 def load_pipeline_runner_config(path: str | Path = "config/pipeline.yaml") -> PipelineRunnerConfig:
