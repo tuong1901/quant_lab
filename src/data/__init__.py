@@ -13,6 +13,7 @@ from src.data.exceptions import (
     IncompatibleDatasetError,
 )
 from src.data.market import Market
+from src.data.columns import ColumnPolicy, FeatureColumn
 from src.data.timeframe import Timeframe
 from src.data.dataset import DataRange, StorageReference, Dataset
 from src.data.versioning import calculate_content_hash, canonicalize_ohlcv, enforce_open_close_continuity, verify_dataset_hash
@@ -30,6 +31,8 @@ __all__ = [
     "DataValidationError",
     "IncompatibleDatasetError",
     "Market",
+    "ColumnPolicy",
+    "FeatureColumn",
     "Timeframe",
     "DataRange",
     "StorageReference",

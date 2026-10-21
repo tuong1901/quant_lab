@@ -1,6 +1,6 @@
 """Immutable market-data metadata governed by the strict data contract."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Type, TypeVar
@@ -11,6 +11,7 @@ import yaml
 from src.data.exceptions import DataValidationError, InvalidDatasetError
 from src.data.market import Market
 from src.data.timeframe import Timeframe, create_utc_timestamp
+from src.data.columns import ColumnPolicy
 
 T = TypeVar("T", bound="BaseId")
 
@@ -133,7 +134,7 @@ class Dataset:
     """
     [PURPOSE]: Bind market metadata, physical storage and an expected SHA-256 fingerprint.
     [DEPENDENCIES]: Market, Timeframe, DataRange, StorageReference.
-    [ARGS]: dataset_id, market, timeframe, data_range, storage_reference, content_hash, version.
+    [ARGS]: dataset_id, market, timeframe, data_range, storage_reference, content_hash, version, columns.
     [RETURNS]: Immutable Dataset descriptor.
     [SIDE EFFECTS]: Raises InvalidDatasetError for malformed metadata.
     """
@@ -145,6 +146,7 @@ class Dataset:
     storage_reference: StorageReference
     content_hash: str
     version: str = "v1"
+    columns: ColumnPolicy = field(default_factory=ColumnPolicy)
 
     def __post_init__(self) -> None:
         """
@@ -154,6 +156,8 @@ class Dataset:
         [RETURNS]: None.
         [SIDE EFFECTS]: Raises InvalidDatasetError for malformed descriptor fields.
         """
+        if not isinstance(self.columns, ColumnPolicy):
+            raise InvalidDatasetError("columns must be a ColumnPolicy.")
         if not isinstance(self.dataset_id, str) or not self.dataset_id.strip():
             raise InvalidDatasetError("dataset_id must be a non-empty string.")
         if not isinstance(self.version, str) or not self.version.strip():
@@ -199,6 +203,7 @@ class Dataset:
                 data_range=DataRange(**raw["data_range"]),
                 storage_reference=StorageReference(**raw["storage_reference"]),
                 content_hash=raw["content_hash"],
+                columns=ColumnPolicy.from_dict(raw.get("columns")),
             )
         except (KeyError, TypeError, yaml.YAMLError) as error:
             raise InvalidDatasetError(f"Invalid dataset YAML {yaml_path!r}: {error}") from error
@@ -224,6 +229,7 @@ class Dataset:
             "data_range": {"start": self.data_range.start.isoformat(), "end": self.data_range.end.isoformat()},
             "storage_reference": {"path": self.storage_reference.path, "format": self.storage_reference.format},
             "content_hash": self.content_hash,
+            "columns": self.columns.to_dict(),
         }
         Path(yaml_path).parent.mkdir(parents=True, exist_ok=True)
         with open(yaml_path, "w", encoding="utf-8") as handle:

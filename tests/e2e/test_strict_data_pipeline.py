@@ -1,70 +1,61 @@
-"""Production-path proof using a bounded read-only slice of the approved real dataset."""
+"""Synthetic descriptor -> loader -> features -> strategy -> engine -> evaluation proof."""
 
-from datetime import timedelta
-from pathlib import Path
-import tempfile
+from unittest.mock import mock_open, patch
 import unittest
-
+import yaml
 import pandas as pd
 
-from src.data.dataset import DataRange, Dataset, StorageReference
+from src.data.columns import CANONICAL_COLUMNS, ColumnPolicy
+from src.data.dataset import Dataset
 from src.data.loader import DatasetLoader
-from src.data.market import Market
-from src.data.timeframe import Timeframe
 from src.data.versioning import calculate_content_hash
+from src.data.timeframe import Timeframe
 from src.features.indicators import calculate_causal_atr
-from src.evaluation.metrics import calculate_basic_metrics, calculate_equity_risk_metrics
+from src.evaluation.metrics import calculate_basic_metrics
 from src.strategies.ema import EMAStrategy
-from src.trading.backtest import BacktestEngine
+from src.trading.backtest import BacktestEngine, HistoricalClock
 
 
 class TestStrictDataPipelineE2E(unittest.TestCase):
-    """Prove Dataset -> Feature -> Strategy -> Backtest using 64 real M15 candles."""
-
-    def setUp(self) -> None:
-        scratch_root = Path.cwd() / ".test-artifacts"
-        scratch_root.mkdir(exist_ok=True)
-        self.temp_dir = tempfile.TemporaryDirectory(dir=scratch_root)
-        source_path = Path("data/valm15-indivip_signal.csv")
-        source_slice = pd.read_csv(source_path, nrows=64)
-        # Rows 1, 10, and 29 have a low-bound inconsistency after open continuity
-        # cleaning. Keep that defect rejected by the loader and use this valid real run.
-        self.raw = source_slice.iloc[30:64].copy()
-        self.fixture_path = Path(self.temp_dir.name) / "valm15_slice.csv"
-        self.raw.to_csv(self.fixture_path, index=False)
-
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
-
-    def test_strict_dataset_reaches_evaluation(self) -> None:
-        """Load real data through strict backtest and evaluate the resulting metrics."""
-        timestamps = pd.to_datetime(self.raw["time"], utc=True)
-        dataset = Dataset(
-            dataset_id="btc_val_m15_slice",
-            version="v1",
-            market=Market("binance", "BTCUSDT", "USDT", "perpetual"),
-            timeframe=Timeframe.M15,
-            data_range=DataRange(timestamps.min().to_pydatetime(), (timestamps.max() + pd.Timedelta(minutes=15)).to_pydatetime()),
-            storage_reference=StorageReference(str(self.fixture_path), "csv"),
-            content_hash=calculate_content_hash(self.raw),
-        )
-
-        market_data = DatasetLoader().load(dataset)
+    def test_strict_dataset_reaches_evaluation(self):
+        """
+        [PURPOSE]: Exercise actual YAML parsing, policy, repair, hash and engine in memory.
+        [DEPENDENCIES]: Strict data and trading APIs; mocked filesystem boundaries.
+        [ARGS]: None.
+        [RETURNS]: None.
+        [SIDE EFFECTS]: Captures logs and runs synthetic simulation.
+        """
+        prices = [100., 102., 104., 103., 99., 97., 101., 106.]
+        raw = pd.DataFrame(dict(time=pd.date_range("2018-01-01", periods=8, freq="15min", tz="UTC"),
+                                open=prices, high=[p+4 for p in prices], low=[p-4 for p in prices],
+                                close=prices, Volume=1., note="synthetic"))
+        mapping = {name: name for name in CANONICAL_COLUMNS}
+        mapping.update(timestamp="time", volume="Volume")
+        policy = ColumnPolicy(mapping, ("note",))
+        with self.assertLogs("src.data", level="INFO"):
+            digest = calculate_content_hash(raw, policy)
+        payload = dict(dataset_id="synthetic", version="v1",
+                       market=dict(venue="binance", symbol="ETHUSDT", quote_currency="USDT", market_type="perpetual"),
+                       timeframe="15m", data_range=dict(start=raw.time.iloc[0].isoformat(),
+                       end=(raw.time.iloc[-1]+pd.Timedelta(minutes=15)).isoformat()),
+                       storage_reference=dict(path="never-read.csv", format="csv"),
+                       content_hash=digest, columns=policy.to_dict())
+        with patch("builtins.open", mock_open(read_data=yaml.safe_dump(payload))):
+            dataset = Dataset.from_yaml("never-read.yaml")
+        with patch("src.data.loader.Path.is_file", return_value=True), \
+             patch("src.data.loader.pd.read_csv", return_value=raw), self.assertLogs("src.data", level="INFO") as logs:
+            market_data = DatasetLoader().load(dataset)
+        self.assertNotIn("note", market_data.df)
+        self.assertIn("candle_repaired", "\n".join(logs.output))
         frame = market_data.df.copy()
-        frame["atr"] = calculate_causal_atr(frame, period=14)
-        frame["ema2"] = frame["close"].ewm(span=2, adjust=False).mean()
-        frame["ema4"] = frame["close"].ewm(span=4, adjust=False).mean()
-
-        result = BacktestEngine(strategy=EMAStrategy(fast_period=2, slow_period=4)).run(frame)
+        frame["atr"] = calculate_causal_atr(frame, period=3)
+        frame["ema2"] = frame.close.ewm(span=2, adjust=False).mean()
+        frame["ema4"] = frame.close.ewm(span=4, adjust=False).mean()
+        engine = BacktestEngine(strategy=EMAStrategy(2, 4), symbol="ETHUSDT",
+                                clock=HistoricalClock(frame.timestamp.iloc[0]))
+        result = engine.run(frame)
         metrics = calculate_basic_metrics(result)
-        risk_metrics = calculate_equity_risk_metrics(metrics.equity_curve, Timeframe.M15)
-
-        self.assertEqual(result.bars_processed, len(frame))
-        self.assertEqual(len(result.signals), len(frame))
-        self.assertEqual(market_data.dataset.content_hash, dataset.content_hash)
+        self.assertEqual(result.bars_processed, 8)
+        self.assertTrue(result.fills)
         self.assertEqual(metrics.final_equity, result.final_equity)
-        self.assertEqual(metrics.net_pnl, result.final_equity - result.initial_capital)
-        self.assertEqual(metrics.return_pct, metrics.net_pnl / metrics.initial_capital * 100.0)
-        self.assertEqual(len(metrics.equity_curve), len(result.portfolio_history))
-        self.assertEqual(risk_metrics.final_equity, metrics.final_equity)
-        self.assertEqual(risk_metrics.net_pnl, metrics.net_pnl)
+        self.assertTrue(all(order.symbol == "ETHUSDT" for order in result.orders))

@@ -2,13 +2,17 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+import logging
 
 import pandas as pd
 
 from src.data.dataset import DataRange, Dataset
 from src.data.exceptions import DataValidationError, InvalidDatasetError
 from src.data.timeframe import Timeframe
-from src.data.versioning import canonicalize_ohlcv, calculate_content_hash
+from src.data.versioning import canonicalize_ohlcv, _hash_canonical_frame, validate_ohlcv_bounds
+from src.data.columns import ColumnPolicy
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -30,8 +34,27 @@ class DatasetLoader:
 
     def load(self, dataset: Dataset) -> MarketData:
         """
+        [PURPOSE]: Load a strict dataset with success and rejection diagnostics.
+        [DEPENDENCIES]: _load_validated.
+        [ARGS]: dataset — descriptor with explicit column policy.
+        [RETURNS]: Verified MarketData.
+        [SIDE EFFECTS]: Reads storage, logs summary/errors and propagates contract failures.
+        """
+        identity = getattr(dataset, "identity", "<invalid>")
+        logger.info("Loading dataset=%s", identity)
+        try:
+            result = self._load_validated(dataset)
+        except Exception:
+            logger.exception("Dataset rejected identity=%s", identity)
+            raise
+        logger.info("Dataset loaded identity=%s rows=%s columns=%s hash_verified=True",
+                    identity, len(result.df), list(result.df.columns))
+        return result
+
+    def _load_validated(self, dataset: Dataset) -> MarketData:
+        """
         [PURPOSE]: Load a dataset and reject any schema, temporal, OHLCV, hash or gap breach.
-        [DEPENDENCIES]: Dataset, canonicalize_ohlcv, calculate_content_hash.
+        [DEPENDENCIES]: Dataset, canonicalize_ohlcv, _hash_canonical_frame.
         [ARGS]: dataset — Immutable Dataset descriptor.
         [RETURNS]: Verified MarketData.
         [SIDE EFFECTS]: Reads local storage and raises DataValidationError on contract failure.
@@ -45,10 +68,10 @@ class DatasetLoader:
             raw = pd.read_csv(path) if dataset.storage_reference.format == "csv" else pd.read_parquet(path)
         except (OSError, ValueError, ImportError) as error:
             raise DataValidationError(f"Unable to read dataset storage {path}: {error}") from error
-        frame = canonicalize_ohlcv(raw)
+        frame = canonicalize_ohlcv(raw, dataset.columns, dataset.identity)
         self._validate_temporal_contract(frame, dataset.data_range, dataset.timeframe)
         self._validate_ohlcv_bounds(frame)
-        if calculate_content_hash(frame) != dataset.content_hash:
+        if _hash_canonical_frame(frame, dataset.columns) != dataset.content_hash:
             raise DataValidationError(f"Content hash mismatch for dataset {dataset.identity}.")
         return MarketData(dataset=dataset, df=frame)
 
@@ -79,28 +102,39 @@ class DatasetLoader:
         [RETURNS]: None.
         [SIDE EFFECTS]: Raises DataValidationError when an OHLCV invariant fails.
         """
-        if (frame["high"] < frame["low"]).any():
-            raise DataValidationError("OHLC violation: high < low.")
-        if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
-            raise DataValidationError("OHLC violation: high < max(open, close).")
-        if (frame["low"] > frame[["open", "close"]].min(axis=1)).any():
-            raise DataValidationError("OHLC violation: low > min(open, close).")
-        if (frame["volume"] < 0).any():
-            raise DataValidationError("OHLCV violation: negative volume.")
+        validate_ohlcv_bounds(frame)
 
 
-def load_m15_ohlcv(csv_path: str) -> pd.DataFrame:
+def load_m15_ohlcv(csv_path: str, columns: ColumnPolicy | None = None) -> pd.DataFrame:
+    """
+    [PURPOSE]: Keep deprecated M15 loading explicit and auditable through the same policy.
+    [DEPENDENCIES]: _load_m15_validated.
+    [ARGS]: csv_path — CSV source; columns — explicit policy or canonical-only.
+    [RETURNS]: Validated canonical M15 data.
+    [SIDE EFFECTS]: Reads storage, logs warnings/errors, propagates validation failures.
+    """
+    logger.warning("Deprecated CSV adapter path=%s; descriptor/hash verification is unavailable", csv_path)
+    try:
+        frame = _load_m15_validated(csv_path, columns)
+    except Exception:
+        logger.exception("Legacy dataset rejected path=%s", csv_path)
+        raise
+    logger.info("Legacy dataset loaded path=%s rows=%s columns=%s", csv_path, len(frame), list(frame.columns))
+    return frame
+
+
+def _load_m15_validated(csv_path: str, columns: ColumnPolicy | None) -> pd.DataFrame:
     """
     [PURPOSE]: Retain a deprecated compatibility adapter backed by strict validation.
     [DEPENDENCIES]: DatasetLoader validation primitives, Timeframe.
-    [ARGS]: csv_path — M15 CSV path.
+    [ARGS]: csv_path — M15 CSV path; columns — explicit policy or canonical-only.
     [RETURNS]: Canonical validated M15 DataFrame.
     [SIDE EFFECTS]: Reads storage and raises DataValidationError for invalid data.
     """
     path = Path(csv_path)
     if not path.is_file():
         raise DataValidationError(f"Dataset storage not found: {path}")
-    frame = canonicalize_ohlcv(pd.read_csv(path))
+    frame = canonicalize_ohlcv(pd.read_csv(path), columns, str(path))
     timestamps = frame["timestamp"]
     if timestamps.duplicated().any() or not timestamps.is_monotonic_increasing:
         raise DataValidationError("Timestamps must be unique and strictly increasing.")

@@ -13,3 +13,14 @@ storage_reference:
   path: data/derived/testm15_strict_full.csv
   format: csv
 content_hash: 879935073b4c956752363dbb9069f7d8bc524779494df2906e3b1dbae81d09c5
+columns:
+  mapping:
+    timestamp: time
+    open: open
+    high: high
+    low: low
+    close: close
+    volume: Volume
+  ignore: ["Trend Chính 1", "Trend Chính 2", "Trend Chính 3", "Trend Phụ 1", "Trend Phụ 2", "Signal"]
+  features: {}
+  unknown: reject
