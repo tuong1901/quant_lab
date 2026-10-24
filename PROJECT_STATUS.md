@@ -1,5 +1,20 @@
 # Project Status
 
+## 2026-10-21 — explicit data columns and repair audit
+- Implemented: YAML column mapping/ignore/float64 feature allowlist; unknown columns fail. Three production descriptors map time/Volume explicitly and ignore five Trend columns plus Signal; features are empty.
+- Confirmed policy: preserve open-close continuity, including intentional high/low repair. Every repaired candle emits WARNING with before/after values, timestamp and reason; INFO summarizes counts. This supersedes historical high-preservation notes below.
+- Hash: unchanged OHLCV-v1 serialization without features; feature-aware v2 includes declared numeric features. Production hashes remain untouched.
+- Verification: 44/44 targeted column/repair/hash/critical/mutation/E2E/runner tests passed together; git diff --check passed. Only the first header line of each approved derived CSV was read, no market rows and no source writes.
+- Open: real-data E2E not run. Storage timezone assumptions, edge coverage and unrelated legacy tests remain outside scope.
+- REQ: `docs/requirements/REQ-20261021-data-repair-audit-and-column-policy.md`.
+
+## 2026-10-21 — strict runner wiring and function logs
+- Done: configured ATR period reaches the indicator; clock/context use selected dataset; explicit engine symbol is separate from run identity. Existing callers retain the run-ID symbol fallback.
+- Done: finite numeric validation and risk-free-rate bounds; INFO runtime summaries and DEBUG function traces; CLI appends UTF-8 logs to `logs/backtest.log` and keeps reports on stdout.
+- Verification: 3 config tests + 8 synthetic runner/engine/logging tests passed. No real YAML, market data or log files were accessed by these tests.
+- Next/open: real-data E2E awaits separate file-read permission; legacy config tests still reference retired YAML and outdated types. Existing ATR initialization and fill-bar ATR timing warrant a separate causality review; unchanged by this wiring repair.
+- REQ: `docs/requirements/REQ-20261021-fix-backtest-wiring-and-logging.md`.
+
 ## Done
 - REQ: `docs/requirements/REQ-20261006-remove-legacy-config-yaml.md` (legacy YAML retired). Removed the ten user-approved files and `tests/config/test_loader.py`; strict `backtest.yaml` and `config/datasets/` descriptors remain.
 - REQ: `docs/requirements/REQ-20261006-strict-backtest-risk-configuration.md` (in progress). Strict `backtest.yaml` now configures capital/leverage, risk sizing, ATR stop/2R target, fees, and slippage. Parser check and 20 portfolio/evaluation regressions pass; real-data strict E2E remains pending data-read approval.

@@ -1,88 +1,128 @@
-# Phân Hệ Dữ Liệu Thị Trường (`src/data/`) — Source Catalog & Architecture Guide
+# Tầng dữ liệu thị trường — src/data
 
-Tài liệu này là Catalog & Hướng dẫn Kiến trúc toàn diện cho Phân hệ Dữ liệu Thị trường (`src/data/`), mô tả chi tiết chức năng, ý nghĩa, quan hệ liên kết và tác động hệ thống của từng file nguồn.
+Luồng production: Dataset YAML -> Dataset.from_yaml() -> DatasetLoader.load()
+-> MarketData(dataset, df) -> features -> backtest.
 
----
+## Trách nhiệm từng module
 
-## 📑 Danh Mục File & Cấu Trúc Phân Hệ (`src/data/`)
+| Module | Trách nhiệm |
+|---|---|
+| columns.py | ColumnPolicy/FeatureColumn bất biến; mapping, ignore, feature allowlist và kiểm tra schema |
+| dataset.py | Dataset, DataRange, StorageReference; parse/serialize YAML và column policy |
+| market.py | Chuẩn hóa market identity: VENUE:SYMBOL:MARKET_TYPE:QUOTE_CURRENCY |
+| timeframe.py | Timeframe và helper datetime UTC |
+| versioning.py | Chọn cột, chuẩn hóa số/thời gian, sửa continuity có cảnh báo, kiểm tra OHLCV và hash |
+| loader.py | Đọc CSV/Parquet, kiểm tra thời gian/range/cadence/hash, log kết quả hoặc lỗi |
+| catalog.py | Registry theo dataset identity/version |
+| compatibility.py | So market, timeframe và giao nhau của DataRange |
+| exceptions.py | Ngoại lệ dùng chung cho data |
+| strict.py, __init__.py | Export API; strict.py chỉ là lớp tương thích import |
 
-```text
-src/data/
-├── __init__.py          # Export master SSOT public symbols cho data access
-├── market.py            # Value Object Market (venue, symbol, quote_currency, market_type)
-├── timeframe.py         # Enum Timeframe (M1..D1) & utility quy đổi giây/phút
-├── dataset.py           # Entities DataRange, StorageReference & Dataset (YAML serialization)
-├── versioning.py        # SHA-256 Content Hash Engine kiểm soát phiên bản dữ liệu
-├── catalog.py           # Registry DatasetCatalog quản lý danh mục Dataset
-├── loader.py            # DatasetLoader (Read CSV/Parquet, validate UTC, OHLC bounds, missing gaps) & load_m15_ohlcv()
-├── compatibility.py     # Check tính tương thích dữ liệu giữa Strategy và Execution
-└── exceptions.py        # Cây ngoại lệ tùy chỉnh cho phân hệ data
+Các module trong src/data chỉ phụ thuộc trực tiếp vào nội bộ data và thư viện ngoài.
+Không phụ thuộc trực tiếp vào config, features, strategies hoặc trading.
+
+## Chính sách cột bắt buộc trong Dataset YAML
+
+Ví dụ đúng với header ba derived CSV đã được phép kiểm tra:
+
+```yaml
+columns:
+  mapping:
+    timestamp: time
+    open: open
+    high: high
+    low: low
+    close: close
+    volume: Volume
+  ignore: ["Trend Chính 1", "Trend Chính 2", "Trend Chính 3", "Trend Phụ 1", "Trend Phụ 2", "Signal"]
+  features: {}
+  unknown: reject
 ```
 
----
+- Mapping là **tên canonical -> tên cột nguồn**, phân biệt chữ hoa/thường.
+- YAML phải khai báo đủ mapping, ignore, features, unknown. Thiếu policy sẽ báo lỗi.
+- Thiếu cột bắt buộc, cột nguồn trùng, mapping xung đột hoặc cột chưa khai báo đều bị từ chối.
+- Cột ignore có mặt sẽ được bỏ và ghi INFO; tên ignore vắng mặt không gây lỗi.
+- Output chỉ chứa sáu cột canonical theo thứ tự cố định và feature đã khai báo.
+- Không tự dò time/date/Volume hay tự đưa các cột còn lại vào feature.
+- Chính sách Python mặc định ColumnPolicy() chỉ nhận sáu tên canonical, không có cột thừa.
+  Caller dùng alias phải truyền policy rõ ràng.
 
-## 💡 Chi Tiết Từng Module
+Muốn nhận một feature từ storage, khai báo source và type:
 
-### 1. 📄 [src/data/market.py](file:///d:/reverse_indi/src/data/market.py)
-- **[PURPOSE]**: Dataclass bất biến (`frozen=True`) đại diện cho thị trường giao dịch (`Market`).
-- **[PROPERTIES / METHODS]**:
-  - `identity`: Trả về canonical string e.g. `'BINANCE:BTCUSDT'`.
-- **[SIDE EFFECTS & DEPENDENCIES]**: Ném `InvalidMarketError` nếu `venue`, `symbol` hoặc `quote_currency` bị rỗng.
-
-### 2. 📄 [src/data/timeframe.py](file:///d:/reverse_indi/src/data/timeframe.py)
-- **[PURPOSE]**: Enum `Timeframe` chuẩn hóa các khung thời gian nến (`M1`, `M5`, `M15`, `M30`, `H1`, `H4`, `D1`).
-- **[METHODS]**:
-  - `to_seconds() -> int`: Quy đổi khung thời gian ra giây.
-  - `to_minutes() -> int`: Quy đổi khung thời gian ra phút.
-  - `from_string(val: str) -> Timeframe`: Parse chuỗi e.g. `'15m'`, `'1h'` thành Enum `Timeframe`.
-
-### 3. 📄 [src/data/dataset.py](file:///d:/reverse_indi/src/data/dataset.py)
-- **[PURPOSE]**: Dataclass bất biến định nghĩa metadata cho một dataset (`DataRange`, `StorageReference`, `Dataset`).
-- **[METHODS]**:
-  - `Dataset.from_yaml(yaml_path) -> Dataset`: Parse cấu hình metadata dataset từ file YAML.
-  - `identity`: Trả về canonical dataset identity string e.g. `'btcusdt_binance_perp_15m:v1'`.
-
-### 4. 📄 [src/data/versioning.py](file:///d:/reverse_indi/src/data/versioning.py)
-- **[PURPOSE]**: Tính toán mã hash SHA-256 nội dung của DataFrame (`calculate_content_hash(df)`).
-- **[SIDE EFFECTS]**: Ném `DataValidationError` nếu DataFrame rỗng. Duyệt qua các cột `timestamp`, `open`, `high`, `low`, `close`, `volume` để mã hóa byte-stream deterministic.
-
-### 5. 📄 [src/data/catalog.py](file:///d:/reverse_indi/src/data/catalog.py)
-- **[PURPOSE]**: Registry `DatasetCatalog` quản lý và tra cứu các định nghĩa `Dataset`.
-- **[METHODS]**:
-  - `register(dataset)`: Đăng ký một `Dataset` vào memory catalog. Ném `DuplicateDatasetError` nếu trùng identity.
-  - `get(identity)`: Tìm kiếm dataset theo identity hoặc `dataset_id`.
-  - `load_from_file(yaml_path)` / `load_from_dir(dir_path)`: Đọc và đăng ký các file cấu hình YAML.
-
-### 6. 📄 [src/data/loader.py](file:///d:/reverse_indi/src/data/loader.py)
-- **[PURPOSE]**: `DatasetLoader` đọc file vật lý (CSV/Parquet) và thực hiện kiểm định tính toàn vẹn (Validation Pipeline).
-- **[VALIDATION PIPELINE]**:
-  1. Kiểm tra sự tồn tại của file vật lý.
-  2. Parse CSV/Parquet sang DataFrame.
-  3. Validate bắt buộc các cột `open`, `high`, `low`, `close`, `volume` và `timestamp`.
-  4. Quy đổi và kiểm tra UTC timestamp: không được chứa `NaT`, không được trùng lặp (duplicate), phải tăng nghiêm ngặt (monotonic increasing), nằm trong khoảng `[data_range.start, data_range.end]`.
-  5. Validate bất đẳng thức OHLC: `high >= low`, `high >= max(open, close)`, `low <= min(open, close)`, `volume >= 0`.
-  6. Verify SHA-256 content hash so với `dataset.content_hash`.
-  7. Phát hiện số nến bị thiếu (`detect_missing_candles`).
-- **[HELPER FUNCTION]**: `load_m15_ohlcv(csv_path)` - Loader nhanh phục vụ CLI script runner.
-
-### 7. 📄 [src/data/compatibility.py](file:///d:/reverse_indi/src/data/compatibility.py)
-- **[PURPOSE]**: Hàm `validate_compatible_datasets(strategy_ds, execution_ds)` kiểm tra tính tương thích về Market và Timeframe giữa dữ liệu tạo chiến lược và dữ liệu thực thi.
-
----
-
-## 🔗 DAG Dependency Position
-
-## Strict Data Contract
-
-- Timestamps are canonical UTC; naive timestamps are rejected.
-- `DataRange` uses `[start, end)`: the start is included and the end is excluded.
-- Market identity is `VENUE:SYMBOL:MARKET_TYPE:QUOTE_CURRENCY`.
-- Dataset SHA-256 hashes canonical ordered `timestamp, open, high, low, close, volume` values.
-- Before hashing and validation, only a candle whose `open` differs from the previous `close` is aligned; if that candidate open exceeds the candle's existing `high`, its open is clamped to that high. The source file remains unchanged.
-- The loader rejects missing/irregular candles; it never fills gaps.
-- Production runners require `--dataset-definition <descriptor.yaml>` and load it through `Dataset.from_yaml()` plus `DatasetLoader`.
-
-```text
-src.core -> src.config -> src.data
+```yaml
+  features:
+    score:
+      source: RawScore
+      type: float64
 ```
-Phân hệ `src.data` chỉ được phép phụ thuộc vào `src.core` và `src.config`. Không phụ thuộc ngược vào `features`, `strategies`, `engine`, `environment` hay `evaluation`.
+
+Hiện hỗ trợ float64 hữu hạn, không null. Sai kiểu hoặc NaN/infinity bị từ chối.
+Tên feature không được trùng tên OHLCV/timestamp. Một cột nguồn chỉ có một vai trò.
+Ba descriptor production hiện có features rỗng; Trend/Signal không được đưa vào engine.
+
+## Sửa continuity có chủ ý và có cảnh báo
+
+Đây là quy tắc được người dùng xác nhận lại ngày 2026-10-21:
+
+1. Giữ nguyên nến đầu tiên và nến đã có open bằng close trước.
+2. Với nến gián đoạn, đặt open bằng close nến trước.
+3. Nếu open mới làm vượt range: hạ low cho nến xanh/flat hoặc nâng high cho nến đỏ
+   theo điều kiện hiện có; không clamp open về high.
+4. Kiểm tra OHLCV sau sửa; lỗi không được quy tắc xử lý vẫn bị từ chối.
+5. Không ghi đè nguồn, không sắp xếp lại nến. Reset row index để index trùng không nhân bản dòng.
+
+Mỗi nến bị sửa phát một WARNING gồm dataset, vị trí dòng (bắt đầu từ 0), timestamp,
+close nến trước, open/high/low trước và sau, cùng reason=open_close_discontinuity.
+INFO tổng hợp số dòng, số nến sửa và số sửa từng trường. Gọi trực tiếp hàm repair,
+canonicalization, hash hoặc adapter cũ cũng phát cảnh báo khi sửa.
+
+DatasetLoader không chuẩn hóa lần hai khi kiểm tra hash, nên một lần load không
+ghi lặp cảnh báo cho cùng nến. Nếu dữ liệu bị từ chối sau sửa, log lỗi nêu rõ;
+cảnh báo sửa không có nghĩa dataset đã qua kiểm định.
+
+Dùng CLI hiện tại để ghi stderr và logs/backtest.log:
+```powershell
+.\venv\Scripts\python.exe run_backtest.py
+.\venv\Scripts\python.exe run_backtest.py --log-level DEBUG
+```
+Module data sử dụng logging chuẩn, không tự thay cấu hình handler của ứng dụng.
+
+## Hash và đường gọi
+
+calculate_content_hash(raw, columns=dataset.columns, dataset_identity=dataset.identity)
+nhận **dữ liệu nguồn cùng policy tương ứng**. Không đưa frame đã đổi tên về canonical
+vào lại một policy vẫn trỏ tới time/Volume.
+
+- Không có feature: giữ nguyên chuỗi byte OHLCV v1, nên digest không đổi nếu các
+  giá trị canonical không đổi. Chưa tính lại hoặc tự cập nhật hash production.
+- Có feature: dùng schema hash ohlcv-features-v2, chứa sáu trường canonical cùng
+  tên/type/value của feature theo thứ tự tên xác định. Thay feature làm đổi hash.
+- Cột ignore không ảnh hưởng hash vì không được chuyển cho pipeline.
+- Thêm feature vào descriptor yêu cầu xác lập digest tương ứng trên nguồn đã kiểm chứng.
+  Loader không tự sửa expected hash để cho dữ liệu qua.
+
+load_m15_ohlcv(path, columns=...) là adapter deprecated: cùng policy/repair/cadence,
+có cảnh báo thiếu kiểm chứng descriptor/hash. Production dùng DatasetLoader.
+
+## Ràng buộc thời gian hiện có và giới hạn
+
+DataRange metadata từ chối datetime không timezone và chuẩn hóa về UTC; range là
+[start, end). Loader từ chối timestamp trùng/đảo thứ tự, nằm ngoài range, gap hoặc
+cadence không đều. Nó không lấp gap.
+
+Chính sách parse timestamp storage hiện vẫn dùng pandas utc=True: timestamp nguồn
+không timezone được hiểu là UTC. Loader chưa bắt buộc phủ đủ đầu/cuối DataRange
+hoặc khớp mốc đồng hồ của sàn. Các vấn đề này chưa được đổi trong REQ hiện tại.
+MarketData là frozen container nhưng DataFrame bên trong vẫn có thể thay đổi;
+consumer chịu trách nhiệm không làm sai dữ liệu đã kiểm chứng.
+
+## Kiểm chứng
+
+Tests mới dùng dữ liệu giả trong bộ nhớ, mock file boundary và capture log.
+Các test critical/mutation/E2E liên quan đã bỏ việc đọc/ghi fixture vật lý.
+Chúng kiểm tra policy, cảnh báo qua các entrypoint, repair high/low, index trùng,
+hash v1/feature-aware, schema rejection và luồng thực tới engine/evaluation.
+
+Tham chiếu: docs/requirements/REQ-20261021-data-repair-audit-and-column-policy.md.
+Các REQ cũ mô tả giữ nguyên high/low là lịch sử và được quy tắc xác nhận ở trên thay thế.

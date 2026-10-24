@@ -2,24 +2,34 @@
 
 import hashlib
 import json
+import logging
 
 import numpy as np
 import pandas as pd
 
 from src.data.exceptions import DataValidationError
+from src.data.columns import CANONICAL_COLUMNS, ColumnPolicy
 
-CANONICAL_COLUMNS = ("timestamp", "open", "high", "low", "close", "volume")
+logger = logging.getLogger(__name__)
 
 
-def enforce_open_close_continuity(frame: pd.DataFrame) -> pd.DataFrame:
+def enforce_open_close_continuity(frame: pd.DataFrame, dataset_identity: str = "<direct>") -> pd.DataFrame:
     """
     [PURPOSE]: Align every non-initial candle open with the preceding close and repair only invalid direction-specific wicks.
     [DEPENDENCIES]: pandas.
-    [ARGS]: frame — Canonical OHLCV DataFrame ordered by source row order.
+    [ARGS]: frame — Canonical OHLCV in source order; dataset_identity — diagnostic label.
     [RETURNS]: Copy whose corrected candles preserve continuity and valid OHLC bounds.
-    [SIDE EFFECTS]: None; downstream OHLC validation rejects all unrelated invalid ranges.
+    [SIDE EFFECTS]: Emits WARNING per repair and INFO totals; rejects invalid corrected OHLCV.
     """
-    cleaned = frame.copy()
+    if frame.empty or frame.columns.has_duplicates or set(CANONICAL_COLUMNS) - set(frame.columns):
+        raise DataValidationError("Continuity repair requires non-empty canonical OHLCV with unique columns.")
+    if frame.loc[:, CANONICAL_COLUMNS].isna().any().any():
+        raise DataValidationError("Continuity repair requires non-null OHLCV.")
+    numeric = frame.loc[:, CANONICAL_COLUMNS[1:]].to_numpy(dtype=float)
+    if not np.isfinite(numeric).all():
+        raise DataValidationError("Continuity repair requires finite OHLCV.")
+    cleaned = frame.copy().reset_index(drop=True)
+    open_count = high_count = low_count = 0
     if len(cleaned) > 1:
         candidate_index = cleaned.index[1:]
         original_opens = cleaned.loc[candidate_index, "open"].to_numpy(copy=True)
@@ -27,6 +37,7 @@ def enforce_open_close_continuity(frame: pd.DataFrame) -> pd.DataFrame:
         highs = cleaned.loc[candidate_index, "high"].to_numpy(copy=True)
         lows = cleaned.loc[candidate_index, "low"].to_numpy(copy=True)
         closes = cleaned.loc[candidate_index, "close"].to_numpy()
+        original_highs, original_lows = highs.copy(), lows.copy()
         discontinuous = original_opens != previous_closes
 
         corrected_opens = original_opens.copy()
@@ -43,45 +54,89 @@ def enforce_open_close_continuity(frame: pd.DataFrame) -> pd.DataFrame:
         cleaned.loc[candidate_index, "open"] = corrected_opens
         cleaned.loc[candidate_index, "high"] = highs
         cleaned.loc[candidate_index, "low"] = lows
+        for offset in np.flatnonzero(discontinuous):
+            position = int(offset) + 1
+            logger.warning(
+                "candle_repaired dataset=%s row=%s timestamp=%s previous_close=%s "
+                "open=%s->%s high=%s->%s low=%s->%s reason=open_close_discontinuity",
+                dataset_identity, position, cleaned.at[position, "timestamp"], previous_closes[offset],
+                original_opens[offset], corrected_opens[offset], original_highs[offset], highs[offset],
+                original_lows[offset], lows[offset],
+            )
+        open_count, high_count, low_count = int(discontinuous.sum()), int(repair_high.sum()), int(repair_low.sum())
+    logger.info("Repair summary dataset=%s rows=%s repaired_candles=%s open=%s high=%s low=%s",
+                dataset_identity, len(cleaned), open_count, open_count, high_count, low_count)
+    validate_ohlcv_bounds(cleaned)
     return cleaned
 
 
-def canonicalize_ohlcv(frame: pd.DataFrame) -> pd.DataFrame:
+def validate_ohlcv_bounds(frame: pd.DataFrame) -> None:
     """
-    [PURPOSE]: Normalize aliases and enforce finite canonical OHLCV values.
+    [PURPOSE]: Reject invalid corrected OHLC ranges and negative volume.
+    [DEPENDENCIES]: Continuity repair and DatasetLoader.
+    [ARGS]: frame — finite numeric canonical OHLCV.
+    [RETURNS]: None.
+    [SIDE EFFECTS]: Raises DataValidationError on contract violations.
+    """
+    if (frame["high"] < frame["low"]).any():
+        raise DataValidationError("OHLC violation: high < low.")
+    if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
+        raise DataValidationError("OHLC violation: high < max(open, close).")
+    if (frame["low"] > frame[["open", "close"]].min(axis=1)).any():
+        raise DataValidationError("OHLC violation: low > min(open, close).")
+    if (frame["volume"] < 0).any():
+        raise DataValidationError("OHLCV violation: negative volume.")
+
+
+def canonicalize_ohlcv(frame: pd.DataFrame, columns: ColumnPolicy | None = None,
+                       dataset_identity: str = "<direct>") -> pd.DataFrame:
+    """
+    [PURPOSE]: Apply explicit columns and enforce finite repaired OHLCV values.
     [DEPENDENCIES]: pandas, numpy, DataValidationError.
-    [ARGS]: frame — Raw OHLCV DataFrame.
+    [ARGS]: frame — raw input; columns — explicit policy or canonical-only; dataset_identity — log label.
     [RETURNS]: Canonical DataFrame with UTC timestamp and lowercase OHLCV columns.
-    [SIDE EFFECTS]: Raises DataValidationError for invalid schema or values.
+    [SIDE EFFECTS]: Logs ignores/repairs; raises DataValidationError for invalid schema or values.
     """
-    aliases = {str(column).strip().lower(): column for column in frame.columns}
-    timestamp_column = aliases.get("timestamp") or aliases.get("time") or aliases.get("date")
-    required = {"open", "high", "low", "close", "volume"}
-    if frame.empty or timestamp_column is None or required - set(aliases):
-        raise DataValidationError("Dataset requires timestamp/time and open, high, low, close, volume.")
-    result = frame.copy()
-    result["timestamp"] = pd.to_datetime(result[timestamp_column], utc=True, errors="coerce")
-    if timestamp_column != "timestamp":
-        result = result.drop(columns=[timestamp_column])
-    for column in required:
-        result[column] = pd.to_numeric(result[aliases[column]], errors="coerce")
+    policy = columns if columns is not None else ColumnPolicy()
+    result = policy.select(frame, dataset_identity)
+    result["timestamp"] = pd.to_datetime(result["timestamp"], utc=True, errors="coerce")
+    for column in CANONICAL_COLUMNS[1:]:
+        result[column] = pd.to_numeric(result[column], errors="coerce")
     canonical = result.loc[:, CANONICAL_COLUMNS]
     if canonical.isna().any().any() or not np.isfinite(canonical.loc[:, CANONICAL_COLUMNS[1:]].to_numpy(float)).all():
         raise DataValidationError("OHLCV values must be finite and non-null.")
-    return enforce_open_close_continuity(result)
+    return enforce_open_close_continuity(result, dataset_identity)
 
 
-def calculate_content_hash(frame: pd.DataFrame) -> str:
+def calculate_content_hash(frame: pd.DataFrame, columns: ColumnPolicy | None = None,
+                           dataset_identity: str = "<direct>") -> str:
     """
     [PURPOSE]: Calculate a deterministic SHA-256 hash independent of input column order.
     [DEPENDENCIES]: canonicalize_ohlcv, hashlib, json.
-    [ARGS]: frame — Raw or canonical OHLCV DataFrame.
+    [ARGS]: frame — raw input; columns — explicit policy or canonical-only; dataset_identity — log label.
     [RETURNS]: Lowercase SHA-256 hexadecimal digest.
-    [SIDE EFFECTS]: Raises DataValidationError for invalid data.
+    [SIDE EFFECTS]: Emits repair warnings; raises DataValidationError for invalid data.
     """
-    digest = hashlib.sha256(b"ohlcv-v1|timestamp|open|high|low|close|volume\n")
-    canonical = canonicalize_ohlcv(frame)
-    for timestamp, *values in canonical.loc[:, CANONICAL_COLUMNS].itertuples(index=False, name=None):
+    policy = columns if columns is not None else ColumnPolicy()
+    canonical = canonicalize_ohlcv(frame, policy, dataset_identity)
+    return _hash_canonical_frame(canonical, policy)
+
+
+def _hash_canonical_frame(canonical: pd.DataFrame, policy: ColumnPolicy) -> str:
+    """
+    [PURPOSE]: Hash already validated output without reapplying mapping or logging duplicate repairs.
+    [DEPENDENCIES]: DatasetLoader and calculate_content_hash; hashlib/json.
+    [ARGS]: canonical — validated output; policy — feature schema used to produce it.
+    [RETURNS]: SHA-256; old OHLCV v1 format or feature-aware v2 format.
+    [SIDE EFFECTS]: None.
+    """
+    names = sorted(policy.features)
+    header = b"ohlcv-v1|timestamp|open|high|low|close|volume\n"
+    if names:
+        schema = [(name, policy.features[name].type) for name in names]
+        header = b"ohlcv-features-v2|" + json.dumps(schema, separators=(",", ":")).encode("utf-8") + b"\n"
+    digest = hashlib.sha256(header)
+    for timestamp, *values in canonical.loc[:, list(CANONICAL_COLUMNS) + names].itertuples(index=False, name=None):
         row = [
             timestamp.isoformat().replace("+00:00", "Z"),
             *[np.format_float_positional(float(value), unique=True, trim="-") for value in values],
@@ -90,12 +145,13 @@ def calculate_content_hash(frame: pd.DataFrame) -> str:
     return digest.hexdigest()
 
 
-def verify_dataset_hash(frame: pd.DataFrame, expected_hash: str) -> bool:
+def verify_dataset_hash(frame: pd.DataFrame, expected_hash: str, columns: ColumnPolicy | None = None,
+                        dataset_identity: str = "<direct>") -> bool:
     """
     [PURPOSE]: Compare canonical dataset content to one expected SHA-256 fingerprint.
     [DEPENDENCIES]: calculate_content_hash.
-    [ARGS]: frame — OHLCV DataFrame; expected_hash — Expected lowercase or uppercase digest.
+    [ARGS]: frame — input; expected_hash — digest; columns — policy; dataset_identity — log label.
     [RETURNS]: True when hashes match.
-    [SIDE EFFECTS]: Raises DataValidationError when input data is invalid.
+    [SIDE EFFECTS]: Emits repair warnings; raises DataValidationError when input data is invalid.
     """
-    return calculate_content_hash(frame) == expected_hash.lower()
+    return calculate_content_hash(frame, columns, dataset_identity) == expected_hash.lower()

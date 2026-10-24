@@ -2,6 +2,15 @@
 
 > Current runnable configuration: `config/backtest.yaml` and strict dataset descriptors under `config/datasets/`. The former legacy WFO/pipeline YAML set was retired on 2026-10-06.
 
+> Strict runner update (2026-10-21): run `.\venv\Scripts\python.exe run_backtest.py`
+> or add `--log-level DEBUG` for function/per-bar tracing. Settings come from
+> `config/backtest.yaml`; older dataset/EMA CLI flags in historical sections below
+> are no longer supported. Logs go to stderr and append to `logs/backtest.log`;
+> the evaluation report stays on stdout. Configured ATR period reaches the
+> indicator; clock starts at the first selected candle; context carries dataset
+> identity including version; the engine symbol is separate from run ID.
+> See `src/config/README.md` and `docs/requirements/REQ-20261021-fix-backtest-wiring-and-logging.md`.
+
 Dự án nghiên cứu, tái tạo (reverse-engineer) thuật toán chỉ báo đa xu hướng (VIP Trend Indicator) và xây dựng **Pipeline Quant Lab** hoàn chỉnh cho BTCUSDT M15 theo mô hình **Single Source of Truth (SSOT)** và **Architecture Guardrails**.
 
 ---
